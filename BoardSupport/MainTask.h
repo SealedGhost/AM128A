@@ -9,8 +9,14 @@
 #define USER_MSG_SKIN      (WM_USER + 0x03)
 #define USER_MSG_SHAPE     (WM_USER + 0x04)
 #define USER_MSG_UNIT      (WM_USER + 0x05)
-#define USER_MSG_BRING     (WM_USER + 0x06)
+//#define USER_MSG_BRING     (WM_USER + 0x06)
+#define USER_MSG_LV_MOVE   (WM_USER + 0x06)
 #define USER_MSG_DFULT_CNT (WM_USER + 0x07)
+#define USER_MSG_DIM       (WM_USER + 0x08)
+#define USER_MSG_LV_UPDATE (WM_USER + 0x09)
+#define USER_MSG_FOCUS     (WM_USER + 0x10)
+#define USER_MSG_MNT_SWT   (WM_USER + 0x11)
+
 
 #define STORE_SETTING   1
 #define CANCEL_MONITED  2
@@ -18,6 +24,7 @@
 #define REPLY_CANCEL    4
 #define ADD_MONITED     5
 #define SYS_SETTING     6
+#define SYS_REVIVE      7
 
 #define GUI_KEY_RELEASE           4
 #define GUI_KEY_MENU              5
@@ -35,5 +42,7 @@
 
 #define GUI_KEY_TRACE_ENABLE      28
 #define GUI_KEY_TRACE_DISABLE     31
+
+
 
 #endif

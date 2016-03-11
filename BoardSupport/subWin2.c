@@ -40,19 +40,18 @@
 #include "28.h"
 
 
-
+#define LV_PAGE_SIZE  9
 
 /*--- external variables ---*/
 extern SIMP_BERTH SimpBerthes[BOAT_NUM_MAX];
 extern int N_boat;
 
-/*--- local variables ---*/
-static long MMSI  = 0;
+unsigned char isSub2Inited  = 0;
 
 /*--- local functions ---*/
 static void updateListViewContent(WM_HWIN thisHandle);
-
-
+static void LV_turnPage(WM_HWIN thisListView, int page);
+static void myListViewListener(WM_MESSAGE* pMsg);
 
 
 /*********************************************************************
@@ -76,16 +75,11 @@ static void updateListViewContent(WM_HWIN thisHandle);
 
 
 
-/*---------------- local functions -----------------------------*/
-static void myListViewListener(WM_MESSAGE* pMsg);
-static void updateListViewContent(WM_HWIN thisHandle);
-//static void showSelectedBoatInfo(WM_HWIN thisHandle);
-
-
 /*---------------- static variables ----------------------------*/
-static int Index  = -1; //模块变量
-static int TotalRows  = 0;
-static WM_HTIMER allListRefshTimer;
+ ///模块变量
+static int         LV_Page              = 0;
+
+static long        MMSI                 = 0;
 
 static const GUI_RECT infoRect  =   {LV_AllList_WIDTH+10,LV_AllList_Y,Win_Main_WIDTH-MenuLabel_WIDTH,LV_AllList_HEIGHT+40};
 static const GUI_RECT lvIndicate  = {LV_AllList_WIDTH-200,LV_AllList_Y-40,Win_Main_WIDTH-MenuLabel_WIDTH,480};
@@ -93,7 +87,7 @@ static const GUI_RECT lvRect   =    {0,LV_AllList_Y,LV_AllList_WIDTH,LV_AllList_
 
 static const LVWin_COLOR * pSkin  = &lvWinSkins[0];
 
-
+MENU_Handle hObj;
 
 
 // USER START (Optionally insert additional defines)
@@ -124,10 +118,6 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
 	{ TEXT_CreateIndirect,     "东经:",            ID_TEXT_4,     LV_AllList_WIDTH+20, LV_AllList_Y+120, 200,  30, 0, 0x0, 0},
 	{ TEXT_CreateIndirect,     "航速:",            ID_TEXT_5,     LV_AllList_WIDTH+20, LV_AllList_Y+160, 200,  30, 0, 0x0, 0},
 	{ TEXT_CreateIndirect,     "航向:",            ID_TEXT_6,     LV_AllList_WIDTH+20, LV_AllList_Y+200, 200,  30, 0, 0x0, 0}
-//	{ TEXT_CreateIndirect,     "FDAlarm:",        ID_TEXT_7,     LV_AllList_WIDTH, LV_AllList_Y+240, 200,  30, 0, 0x0, 0},
-//	{ TEXT_CreateIndirect,     "ZMAlarm:",        ID_TEXT_8,     LV_AllList_WIDTH, LV_AllList_Y+280, 200,  30, 0, 0x0, 0}
-  // USER START (Optionally insert additional widgets)
-  // USER END
 };
 
 /*********************************************************************
@@ -149,19 +139,19 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
 */
 static void _cbDialog(WM_MESSAGE * pMsg) {
   WM_HWIN hItem;
-  int     NCode;
-  int     Id;
-  int     i  = 0;
+
   int     SelectedRow  = -1;
-  // USER START (Optionally insert additional variables)
-  // USER END
+  long    SelectedMMSI = 0;
+  int     i;
  
   switch (pMsg->MsgId) {	
- 
-  case USER_MSG_SKIN:
-INFO("case msg skin");   
+  case USER_MSG_LV_UPDATE:
+       updateListViewContent(WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0));      
+       break;
+  
+  case USER_MSG_SKIN: 
        pSkin  = &(lvWinSkins[pMsg->Data.v]);
-       
+INFO("case skin:%s",pMsg->Data.v==SKIN_Day?"Day":"Night");       
        WINDOW_SetBkColor(pMsg->hWin,pSkin->bkColor);
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
        TEXT_SetTextColor(hItem, pSkin->ttl_Text);
@@ -177,11 +167,6 @@ INFO("case msg skin");
        TEXT_SetTextColor(hItem, pSkin->inf_Label);       
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_6);
        TEXT_SetTextColor(hItem, pSkin->inf_Label);
-//       hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_7);
-//       TEXT_SetTextColor(hItem, pSkin->inf_Label); 
-//       hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_8);
-//       TEXT_SetTextColor(hItem, pSkin->inf_Label);        
-       
        
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0);
        LISTVIEW_SetBkColor(hItem, LISTVIEW_CI_UNSEL, pSkin->itm_bkUnsel);
@@ -199,15 +184,10 @@ INFO("case msg skin");
   
   case WM_INIT_DIALOG:
        pSkin  = &(lvWinSkins[SysConf.Skin]);
-       //
-       // Initialization of 'Window'
-       //
+
        hItem = pMsg->hWin;
        WINDOW_SetBkColor(hItem, pSkin->bkColor);
-       
-       //
-       // Initialization of 'Text'
-       //
+
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_0);
        TEXT_SetTextColor(hItem, pSkin->ttl_Text);
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_1);
@@ -222,22 +202,17 @@ INFO("case msg skin");
        TEXT_SetTextColor(hItem, pSkin->inf_Label);       
        hItem  = WM_GetDialogItem(pMsg->hWin, ID_TEXT_6);
        TEXT_SetTextColor(hItem, pSkin->inf_Label);  
-       
-       //
-       // Initialization of 'Listview'
-       //
+
        hItem = WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0);
        WM_SetCallback(hItem, &myListViewListener);
       
        LISTVIEW_AddColumn(hItem, LV_AllList_Col_0_WIDTH, "距离", GUI_TA_HCENTER | GUI_TA_VCENTER);
-   //    LISTVIEW_AddColumn(hItem, LV_AllList_Col_1_WIDTH, "方位", GUI_TA_HCENTER | GUI_TA_VCENTER);
        LISTVIEW_AddColumn(hItem, LV_AllList_Col_2_WIDTH, "MMSI", GUI_TA_HCENTER | GUI_TA_VCENTER);
-       LISTVIEW_AddColumn(hItem, LV_AllList_Col_3_WIDTH, "State", GUI_TA_HCENTER | GUI_TA_VCENTER);	
+       LISTVIEW_AddColumn(hItem, LV_AllList_Col_3_WIDTH, "状态", GUI_TA_HCENTER | GUI_TA_VCENTER);	
        LISTVIEW_AddRow(hItem, NULL);
        LISTVIEW_SetGridVis(hItem, 1);
        LISTVIEW_SetHeaderHeight(hItem,LV_MoniteList_Header_HEIGHT);
        LISTVIEW_SetRowHeight(hItem,LV_MoniteList_Row_HEIGHT);
-       LISTVIEW_SetAutoScrollV(hItem,1);
        LISTVIEW_SetFont(hItem,&GUI_Font30);
        LISTVIEW_SetBkColor(hItem, LISTVIEW_CI_UNSEL, pSkin->itm_bkUnsel);
        LISTVIEW_SetBkColor(hItem, LISTVIEW_CI_SEL,   pSkin->itm_bkSel);
@@ -247,86 +222,103 @@ INFO("case msg skin");
        LISTVIEW_SetTextColor(hItem,LISTVIEW_CI_SEL,   pSkin->itm_txSel);
        LISTVIEW_SetTextColor(hItem,LISTVIEW_CI_SELFOCUS, pSkin->itm_txFocus);
        
-       updateListViewContent(hItem);
+       for(i=LV_PAGE_SIZE; i>0; i--)
+       {
+          LISTVIEW_AddRow(hItem, NULL);       
+       }
+       
+       LISTVIEW_SetSel(hItem, 0);
        
        hItem  = LISTVIEW_GetHeader(hItem);
        HEADER_SetBkColor(hItem,pSkin->Header_Bk);
        HEADER_SetTextColor(hItem,pSkin->Header_Text);
-       //LISTVIEW_SetWrapMode();
-       //LISTVIEW_SetWrapMode(hItem,GUI_WRAPMODE_NONE);
+       
+       isSub2Inited  = 1;
+       break;
+         
+		
+  case WM_PAINT:
+       GUI_SetColor(pSkin->inf_bkColor);
+       GUI_FillRectEx(&infoRect);
+       GUI_SetTextMode(GUI_TM_TRANS);
+       GUI_SetFont(&GUI_Font24);
+       GUI_SetColor(pSkin->inf_Label);
+       GUI_DispStringAt("按确定键选择或取消选择监控的网位仪",  LV_AllList_WIDTH+20, LV_AllList_Y+240);
+      
+       GUI_SetFont(&GUI_Font24_1);
+       GUI_SetColor(pSkin->inf_txColor);
+       
+       if( N_boat <= 0 )
+          break;  
+          
 
        
-       allListRefshTimer  = WM_CreateTimer(pMsg->hWin, 1, 5000, 0);
-       // USER START (Optionally insert additional code for further widget initialization)
-       // USER END
-       break;
-case WM_TIMER:
-   updateListViewContent(WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0));
-   WM_RestartTimer(allListRefshTimer,5000);
-break;    
-		
-case WM_PAINT:
+       hItem  = WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0);
+       
+       if(WM_HasFocus(hItem) == FALSE)
+       {
+          sprintf(pStrBuf, "  0/%3d", N_boat);
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH-80,LV_AllList_Y-20);
+          break;
+       }
+       
+       SelectedRow  = LISTVIEW_GetSel(hItem); 
+            
+       LISTVIEW_GetItemText(WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0),  LV_AllList_Col_MMSI, SelectedRow, pStrBuf, 11);
+       SelectedMMSI  = strtoi(pStrBuf);     
+       if(SelectedMMSI <= 0)
+       {
+          sprintf(pStrBuf,"  0/%3d", N_boat);
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH-80,LV_AllList_Y-20);    
+          break;          
+       }         
+       
+       for(i=0; i<N_boat ; i++)   
+       {
+          if(SimpBerthes[i].pBerth->Boat.user_id == SelectedMMSI)
+          {
+             break;
+          }
+       }
+       if(i<N_boat)
+       {
+          sprintf(pStrBuf,"%3d/%3d", i+1 ,N_boat);
 
-//    updateListViewContent(WM_GetDialogItem(pMsg->hWin, ID_LISTVIEW_0));
-     GUI_SetColor(pSkin->inf_bkColor);
-     GUI_FillRectEx(&infoRect);
-
-     GUI_SetFont(&GUI_Font24_1);
-     GUI_SetColor(pSkin->inf_txColor);
-     GUI_SetTextMode(GUI_TM_TRANS);
-	  
-     SelectedRow  = LISTVIEW_GetSel(WM_GetDialogItem(pMsg->hWin,ID_LISTVIEW_0)); 
-     
-     if(SelectedRow < 0)
-        break;
-     sprintf(pStrBuf,"%3d/%3d",SelectedRow+1,TotalRows);
-
-     GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH-80,LV_AllList_Y-20);
-    
-     GUI_DispStringAt(SimpBerthes[SelectedRow].pBerth->Boat.name,LV_AllList_WIDTH+80,85);       
-    
-     lltostr(SimpBerthes[SelectedRow].latitude,pStrBuf);    
-     GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH+80,125);
-     
-     lltostr(SimpBerthes[SelectedRow].longitude,pStrBuf);  
-     GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH+80,165);
-     
-     GUI_DispDecAt(SimpBerthes[SelectedRow].pBerth->Boat.SOG,LV_AllList_WIDTH+80,205,3); 
-     GUI_DispDecAt(SimpBerthes[SelectedRow].pBerth->Boat.COG,LV_AllList_WIDTH+80,245,3);     
-	   	break;		
-		
-  case WM_NOTIFY_PARENT:
-    Id    = WM_GetId(pMsg->hWinSrc);
-    NCode = pMsg->Data.v;
-    switch(Id) {
-    case ID_LISTVIEW_0: // Notifications sent by 'Listview'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_SEL_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-			  // WM_InvalidateRect(pMsg->hWin,&infoRect);		// 可以,但逻辑不对			
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    // USER START (Optionally insert additional code for further Ids)
-    // USER END
-    }
-    break;
-  // USER START (Optionally insert additional message handling)
-  // USER END
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH-80,LV_AllList_Y-20);
+         
+          GUI_DispStringAt(SimpBerthes[i].pBerth->Boat.name,LV_AllList_WIDTH+80,85);       
+         
+          lltostr(SimpBerthes[i].latitude,pStrBuf);    
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH+80,125);
+          
+          lltostr(SimpBerthes[i].longitude,pStrBuf);  
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH+80,165);
+          
+//          if(SysConf.Unit == UNIT_km)
+//          {
+//             int sog  = SimpBerthes[i].pBerth->Boat.SOG *18;
+//             sprintf(pStrBuf, "%3d.%02dkm",sog/100, sog%100);
+//          }
+//          else 
+//          {
+//             sprintf(pStrBuf, "%2d.%dkt", SimpBerthes[i].pBerth->Boat.SOG/10,
+//                                          SimpBerthes[i].pBerth->Boat.SOG%10);
+//          }
+          sprintf(pStrBuf, "%2d.%dkt", SimpBerthes[i].pBerth->Boat.SOG/10, 
+                                       SimpBerthes[i].pBerth->Boat.SOG%10);
+          GUI_DispStringAt(pStrBuf, LV_AllList_WIDTH+80,205);
+                  
+          sprintf(pStrBuf, "%3d", SimpBerthes[i].pBerth->Boat.COG/10);
+          pStrBuf[3]  = 194;
+          pStrBuf[4]  = 176;
+          pStrBuf[5]  = '\0';
+          GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH+80,245); 
+       }      
+       break;		
+       
   default:
-    WM_DefaultProc(pMsg);
-    break;
+       WM_DefaultProc(pMsg);
+       break;
   }
 }
 
@@ -361,78 +353,103 @@ static void myListViewListener(WM_MESSAGE* pMsg)
  WM_MESSAGE myMsg;
  
  int selectedRow  = -1;
- int totalRows  = 0;
+ long selectedMMSI  = 0;
 	int i  = 0;
- int Cnt  = 0;
  Bool isAdded  = FALSE;
- long Id  = 0;
 	switch(pMsg->MsgId)
 	{  
-		case WM_SET_FOCUS:
-
-       if(pMsg->Data.v)
-       {
-          if(LISTVIEW_GetNumRows(pMsg->hWin) && (LISTVIEW_GetSel(pMsg->hWin)<0))
-             LISTVIEW_SetSel(pMsg->hWin, 0);
-          WM_InvalidateRect(subWins[2],&lvRect);
-          WM_InvalidateRect(subWins[2],&lvIndicate);        
-       }
-       
-       LISTVIEW_Callback(pMsg);
-       break;	
-       
-//   case WM_PAINT:
-//        _Paint(thisListView, LISTVIEW_H2P(thisListView), pMsg);
-//        break;   
-        
+    case WM_SET_FOCUS:
+         if(pMsg->Data.v)
+         {
+            LV_Page  = 0;
+            LV_turnPage(thisListView, LV_Page);
+            LISTVIEW_SetSel(thisListView, 0);
+            WM_InvalidateRect(subWins[2], &lvIndicate); 
+         }
+         else
+         {
+            WM_InvalidateRect(subWins[2], &lvIndicate);
+            WM_InvalidateRect(subWins[2], &infoRect);
+         }
+         LISTVIEW_Callback(pMsg);
+         break;
     case WM_KEY:
-			pInfo  = (WM_KEY_INFO*)pMsg->Data.p; 
-		 switch(pInfo->Key)
-			{
-				case GUI_KEY_UP:
-				case GUI_KEY_DOWN:
-				     LISTVIEW_Callback(pMsg);
-         WM_InvalidateRect(subWins[2],&lvRect);
-         WM_InvalidateRect(subWins[2],&lvIndicate);          
-				    	break;
+			 pInfo  = (WM_KEY_INFO*)pMsg->Data.p; 
+		  switch(pInfo->Key)
+		 	{            
+				   case GUI_KEY_UP:
+            selectedRow  = LISTVIEW_GetSel(thisListView);
+            if(selectedRow == 0)
+            {
+               if(LV_Page)
+               {
+                  LV_Page--;
+                  LV_turnPage(thisListView, LV_Page);   
+                  LISTVIEW_SetSel(thisListView, LV_PAGE_SIZE-1);               
+               }
+            }
+            else
+            {
+               LISTVIEW_SetSel(thisListView, selectedRow-1);
+            }
+            WM_InvalidateRect(subWins[2],&lvRect);
+            WM_InvalidateRect(subWins[2],&lvIndicate);          
+            break;
+         
+		 		case GUI_KEY_DOWN:
+				      selectedRow  = LISTVIEW_GetSel(thisListView);       
+          if(selectedRow == LV_PAGE_SIZE-1)
+          {
+             if(LV_Page < (N_boat-1)/LV_PAGE_SIZE)
+             {
+               LV_Page++;
+               LV_turnPage(thisListView, LV_Page);
+               LISTVIEW_SetSel(thisListView, 0);
+             }
+          }
+          else if(LV_Page*LV_PAGE_SIZE+selectedRow+1 < N_boat)
+          {
+             LISTVIEW_SetSel(thisListView, selectedRow+1);
+          }
+          WM_InvalidateRect(subWins[2],&lvRect);
+          WM_InvalidateRect(subWins[2],&lvIndicate);          
+          break;
 				
     case GUI_KEY_RIGHT:
-    
-         selectedRow  = LISTVIEW_GetSel(thisListView);
-         totalRows    = LISTVIEW_GetNumRows(thisListView);
-         LISTVIEW_SetSel(thisListView, totalRows);
-         if(selectedRow/10 < totalRows/10)
-            LISTVIEW_SetSel(thisListView,selectedRow-selectedRow%10+10);
+         if(LV_Page < (N_boat-1)/LV_PAGE_SIZE)
+         {
+           LV_Page++;
+           LV_turnPage(thisListView, LV_Page);
+           LISTVIEW_SetSel(thisListView, 0);
+         }
          WM_InvalidateRect(subWins[2],&lvRect);
-         WM_InvalidateRect(subWins[2],&lvIndicate); 
+         WM_InvalidateRect(subWins[2],&lvIndicate);          
          break;
          
     case GUI_KEY_LEFT:
-         selectedRow  = LISTVIEW_GetSel(thisListView);
-         totalRows    = LISTVIEW_GetNumRows(thisListView);
-         if(selectedRow >9 )
+         if(LV_Page > 0)
          {
-            LISTVIEW_SetSel(thisListView, totalRows);
-            LISTVIEW_SetSel(thisListView,selectedRow-selectedRow%10-10);
+            LV_Page--;
+            LV_turnPage(thisListView, LV_Page);
+            LISTVIEW_SetSel(thisListView, 0);
          }
          WM_InvalidateRect(subWins[2],&lvRect);
-         WM_InvalidateRect(subWins[2],&lvIndicate); 
-
-            
-//         showSelectedBoatInfo(thisListView);
+         WM_InvalidateRect(subWins[2],&lvIndicate);          
          break;
     
-				case GUI_KEY_BACKSPACE:    
-         
+				case GUI_KEY_BACKSPACE:  
+    
+//         OSSchedLock();    
          for(i=N_boat-1;i>=0;i--) 
          {
             if(MNTState_Choosen == SimpBerthes[i].pBerth->mntState)
-            {     
-               isAdded  = MNT_add(&SimpBerthes[i].pBerth->Boat);
+            {    
+//               SimpBerthes[i].pBerth->mntState  = MNTState_Add;            
+               isAdded  = MNT_add(SimpBerthes[i].pBerth);
+
                if( isAdded )
                {         
-                  SimpBerthes[i].pBerth->mntState  = MNTState_Monited;   
-                  Cnt++;
+                  SimpBerthes[i].pBerth->mntState  = MNTState_Monitored ;   
                }
                else
                {
@@ -440,57 +457,82 @@ static void myListViewListener(WM_MESSAGE* pMsg)
                }
             }            
          }
+//         OSSchedUnlock();
+         
          myMsg.hWin  = WM_GetClientWindow(menuWin);
          myMsg.MsgId  = USER_MSG_DFULT_CNT;
-         myMsg.Data.v  = Cnt;
-         WM_SendMessage(myMsg.hWin, &myMsg);
-         MNT_printSetting();         
+         myMsg.Data.v  = MNT_getDefaultNum(); 
+//INFO("default num:%d",myMsg.Data.v);   
+         WM_SendMessage(myMsg.hWin, &myMsg);      
          WM_SetFocus(menuWin);
          break;
+         
     case GUI_KEY_MONITORING:
          selectedRow  = LISTVIEW_GetSel(thisListView);
          
-         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 10);
-         Id  = strtoi(pStrBuf);
+         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 11);
+         selectedMMSI  = strtoi(pStrBuf);
          
-         for(i=N_boat-1;i>=0;i--)
+         if(selectedMMSI <= 0)
+            break;
+         
+         for(i=N_boat;i>0;i--)
          {
      
-            if(SimpBerthes[i].pBerth->Boat.user_id == Id)
+            if(SimpBerthes[i-1].pBerth->Boat.user_id == selectedMMSI)
             {          
                break;
             }
+         }
+         
+         if(i)
+            i--;
+         else
+         {
+            INFO("Err!");
+            break;
          }
               
          if(SimpBerthes[i].pBerth->mntState == MNTState_None)     
          {
             SimpBerthes[i].pBerth->mntState  = MNTState_Choosen;
-            LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, selectedRow, "啊");
+            LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, selectedRow, "吖");
          }
          break;
+         
     case GUI_KEY_CANCEL:
          selectedRow  = LISTVIEW_GetSel(thisListView);
          
-         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 10);
-         Id  = strtoi(pStrBuf);
+         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 11);
+         selectedMMSI  = strtoi(pStrBuf);
          
-         for(i=N_boat-1;i>=0;i--)
+         if(selectedMMSI <= 0)
+            break;
+         
+         for(i=N_boat;i>0;i--)
          {
-     
-            if(SimpBerthes[i].pBerth->Boat.user_id == Id)
+            if(SimpBerthes[i-1].pBerth->Boat.user_id == selectedMMSI)
             {          
                break;
             }
+         }
+         
+         if(i)
+            i--;
+         else 
+         {
+            INFO("Err!");
+            break;
          }
 
          if(MNTState_Choosen  == SimpBerthes[i].pBerth->mntState)
          {
      
             SimpBerthes[i].pBerth->mntState  = MNTState_None;
-            LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, selectedRow, "吖");
+            LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, selectedRow, "啊");
          }
          
-         else if(MNTState_Monited  <= SimpBerthes[i].pBerth->mntState)
+         else if(MNTState_Monitored  <= SimpBerthes[i].pBerth->mntState)
          {  
             MMSI  = SimpBerthes[i].pBerth->Boat.user_id;
             myMsg.hWin     = WM_GetClientWindow(confirmWin);
@@ -499,27 +541,23 @@ static void myListViewListener(WM_MESSAGE* pMsg)
             myMsg.Data.v   = CANCEL_MONITED;
             WM_SendMessage(myMsg.hWin, &myMsg); 
            	WM_BringToTop(confirmWin);
-				    WM_SetFocus(WM_GetDialogItem (confirmWin,GUI_ID_BUTTON0));  
+				        WM_SetFocus(WM_GetDialogItem (confirmWin,GUI_ID_BUTTON0));  
          }               
          break;    
      
     case GUI_KEY_ENTER:
          selectedRow  = LISTVIEW_GetSel(thisListView);
-INFO("sel:%d",selectedRow);         
-         if(selectedRow < 0)
-         {
+        
+         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 11);
+         selectedMMSI  = strtoi(pStrBuf);
+         
+         if(selectedMMSI <= 0)
             break;
-         }
-         
-         LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selectedRow, pStrBuf, 10);
-         Id  = strtoi(pStrBuf);
-         
-
-//         OSMutexPend(Updater, 0, &myErr_2);
+            
          for(i=N_boat-1;i>=0;i--)
          {
      
-            if(SimpBerthes[i].pBerth->Boat.user_id == Id)
+            if(SimpBerthes[i].pBerth->Boat.user_id == selectedMMSI)
             {          
                break;
             }
@@ -539,7 +577,7 @@ INFO("sel:%d",selectedRow);
             LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, selectedRow, "啊");
          }
          
-         else if(MNTState_Monited  == SimpBerthes[i].pBerth->mntState)
+         else if(MNTState_Monitored  == SimpBerthes[i].pBerth->mntState)
          {  
             MMSI  = SimpBerthes[i].pBerth->Boat.user_id;
             myMsg.hWin     = WM_GetClientWindow(confirmWin);
@@ -548,9 +586,8 @@ INFO("sel:%d",selectedRow);
             myMsg.Data.v   = CANCEL_MONITED;
             WM_SendMessage(myMsg.hWin, &myMsg); 
            	WM_BringToTop(confirmWin);
-				    WM_SetFocus(WM_GetDialogItem (confirmWin,GUI_ID_BUTTON0));  
+				        WM_SetFocus(WM_GetDialogItem (confirmWin,GUI_ID_BUTTON0));  
          }
-//         OSMutexPost(Updater);
          break;
 
          
@@ -576,7 +613,6 @@ INFO("sel:%d",selectedRow);
                      }
                   }
                                  
-//                  MNT_printSetting();
                  WM_SetFocus(subWins[2]);
                }
                else 
@@ -602,91 +638,86 @@ INFO("Something err!");
 }
 
 
-
-/* 更新所有船舶列表的条目
-*
-*/
-static void updateListViewContent(WM_HWIN thisHandle)
-{	
-	WM_HWIN thisListView  = thisHandle;
-	
-	int i  = 0;
-	int NumOfRows  = 0;
- int SelectedRow  = -1;
- long Id  = 0;
- 
-   SelectedRow  = LISTVIEW_GetSel(thisListView);
- 
-   LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, SelectedRow, pStrBuf, 10);
-   Id  = strtoi(pStrBuf);
-
-  
-	  NumOfRows  = LISTVIEW_GetNumRows(thisListView);
-	
-   for(i=0; i<N_boat; i++)
+static void LV_turnPage(WM_HWIN thisListView, int page)
+{
+   int viewNumRows  = 0;
+   int orgIndex     = 0;
+   int i            = 0;
+   
+   if( (N_boat-1)/LV_PAGE_SIZE == page)
    {
-
-      if(i+1 > NumOfRows)
-      {
-         LISTVIEW_AddRow(thisListView, NULL);
-         NumOfRows  = LISTVIEW_GetNumRows(thisListView);
-      }
-//      if(SimpBerthes[i].pBoat->user_id == Id)
-       if(SimpBerthes[i].pBerth->Boat.user_id == Id)
-       {
+      viewNumRows  = (N_boat-1) % LV_PAGE_SIZE + 1;
+   }
+   else
+   {
+      viewNumRows  = LV_PAGE_SIZE;
+   }
+   
+   orgIndex  = page * LV_PAGE_SIZE;
+   
+   for(i=0; i<viewNumRows; i++)
+   {
+      disttostr(pStrBuf, SimpBerthes[orgIndex+i].Dist);
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST,  i, pStrBuf);
       
-          SelectedRow  = i;      
-       }
-//      sprintf(pStrBuf, "%d", SimpBerthes[i].Dist);
-
-
-      disttostr(pStrBuf, SimpBerthes[i].Dist);
-      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST, i, pStrBuf);
+      sprintf(pStrBuf, "%09ld", SimpBerthes[orgIndex+i].pBerth->Boat.user_id);
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI,  i, pStrBuf);
       
-      sprintf(pStrBuf, "%09ld", SimpBerthes[i].pBerth->Boat.user_id);
-      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, pStrBuf);
-      
-      if(MNTState_None == SimpBerthes[i].pBerth->mntState)
+      if(MNTState_None == SimpBerthes[orgIndex+i].pBerth->mntState)
       {
          LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, i, "啊");
       }
       else
       {
          LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, i, "吖");
-      }
+      }      
    }
-	
-	// LISTVIEW 行数大于要显示的船的数量，删除行 
- /// Warning: Delete first row error!
-	while(NumOfRows > N_boat)
-	{
-	 	LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
-	 	NumOfRows  = LISTVIEW_GetNumRows(thisListView);
-	}
-	
- LISTVIEW_SetSel(thisListView, SelectedRow);
- TotalRows  = NumOfRows;
-    WM_InvalidateRect(subWins[2],&lvRect);
-    WM_InvalidateRect(subWins[2],&lvIndicate); 
+   
+   for(; i<LV_PAGE_SIZE; i++)
+   {
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST, i, "");
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, "");
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT,  i, "");
+   }
 }
 
 
-
-//int getSelectedIndex(WM_HWIN thisListView,  int col)
-//{
-//   int i  = -1;
-//   long Id  = 0;
-//   i  = LISTVIEW_GetSel(thisListView);
-//   LISTVIEW_GetItemText(thisListView, col, i, pStrBuf, 10);
-//   i  = strtoi(pStrBuf);
-//   for(Index=0;Index<N_boat;Index++)
-//   {
-//      if(SimpBerthes[i].pBerth->Boat.user_id == Id)
-//      {
-//         return i;      
-//      }
-//   }
-//   return -1;
-//}
-
+static void updateListViewContent(WM_HWIN thisHandle)
+{
+   WM_HWIN thisListView  = thisHandle;
+   int  i             = 0;
+   int  selRow        = -1;
+   long selectedMMSI  = 0;
+   
+   if(N_boat <= 0)
+   {
+      return ;
+   } 
+   selRow  = LISTVIEW_GetSel(thisListView);  
+   LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selRow, pStrBuf, 11); 
+   selectedMMSI  = strtoi(pStrBuf);  
+   if(selectedMMSI)
+   {
+      for(i=N_boat; i>=0; i--)
+      {
+         if(SimpBerthes[i].pBerth->Boat.user_id == selectedMMSI)
+         {
+            LV_Page  = i/LV_PAGE_SIZE;
+            selRow  = i%LV_PAGE_SIZE;
+            break;
+         }
+      }
+   }
+   else 
+   {
+      LV_Page  = (N_boat-1) / LV_PAGE_SIZE;
+      selRow  = (N_boat-1) % LV_PAGE_SIZE;
+   }
+   
+   LV_turnPage(thisListView, LV_Page);
+   
+   LISTVIEW_SetSel(thisListView, selRow);
+   
+   WM_InvalidateRect(subWins[2], &lvIndicate);  
+}
 

@@ -59,7 +59,7 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { WINDOW_CreateIndirect, "Window", ID_WINDOW_0, SubWin_X, SubWin_Y, SubWin_WIDTH, SubWin_HEIGHT, 0, 0x64, 0 },
   { LISTVIEW_CreateIndirect, "Listview", ID_LISTVIEW_0, LV_MoniteSet_X, LV_MoniteSet_Y, LV_MoniteSet_WIDTH, LV_MoniteSet_HEIGHT, 0, 0x0, 0 },	
  	{ TEXT_CreateIndirect, "监控设置", ID_TEXT_0, (LV_MoniteSet_WIDTH-120)/2,LV_MoniteList_Y-30, 200, 30, 0, 0x0, 0},
-	{ TEXT_CreateIndirect, "监控设置项:",  ID_TEXT_1, LV_MoniteSet_WIDTH+60,    10,        ETWin_WIDHT,30, 0, 0x0, 0}
+	{ TEXT_CreateIndirect, "监控设置项",  ID_TEXT_1, LV_MoniteSet_WIDTH+60,    10,        ETWin_WIDHT,30, 0, 0x0, 0}
 
 	
 	
@@ -83,18 +83,16 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
 */
 static void _cbDialog(WM_MESSAGE * pMsg) {
   WM_HWIN hItem;
-  int     NCode;
-  int     Id;
-  // USER START (Optionally insert additional variables)
-  // USER END
+  WM_MESSAGE myMsg;
+  int i;
+
   switch (pMsg->MsgId) {
   
-  case USER_MSG_BRING:
+  case USER_MSG_LV_UPDATE:
        updateListViewContent( WM_GetDialogItem(pMsg->hWin,ID_LISTVIEW_0));
        break;
   
-  case USER_MSG_SKIN:
-INFO("case msg skin"); 
+  case USER_MSG_SKIN: 
        pSkin  = &(lvWinSkins[pMsg->Data.v]);
        
        WINDOW_SetBkColor(pMsg->hWin,pSkin->bkColor);
@@ -120,7 +118,6 @@ INFO("case msg skin");
        HEADER_SetTextColor(hItem,pSkin->Header_Text);
        break; 
   
-  
   case WM_INIT_DIALOG:
        pSkin  = &(lvWinSkins[SysConf.Skin]);
        //
@@ -143,7 +140,7 @@ INFO("case msg skin");
        WM_SetCallback(hItem, &myListViewListener);
        LISTVIEW_AddColumn(hItem, LV_MoniteSet_Col_0_WIDTH, "船名", GUI_TA_HCENTER | GUI_TA_VCENTER);
        LISTVIEW_AddColumn(hItem, LV_MoniteSet_Col_1_WIDTH, "MMSI", GUI_TA_HCENTER | GUI_TA_VCENTER);
-       LISTVIEW_AddColumn(hItem, LV_MoniteSet_Col_2_WIDTH, "State", GUI_TA_HCENTER | GUI_TA_VCENTER);
+       LISTVIEW_AddColumn(hItem, LV_MoniteSet_Col_2_WIDTH, "选中", GUI_TA_HCENTER | GUI_TA_VCENTER);
        LISTVIEW_AddRow(hItem, NULL);
        LISTVIEW_SetGridVis(hItem, 1);
        LISTVIEW_SetHeaderHeight(hItem,LV_MoniteList_Header_HEIGHT);
@@ -164,42 +161,10 @@ INFO("case msg skin");
        HEADER_SetBkColor(hItem,pSkin->Header_Bk);
        HEADER_SetTextColor(hItem,pSkin->Header_Text);    
        break;
-    
-//  case WM_PAINT:
-//       updateListViewContent(WM_GetDialogItem(pMsg->hWin,ID_LISTVIEW_0));
-//       break;
-  
-  case WM_NOTIFY_PARENT:
-    Id    = WM_GetId(pMsg->hWinSrc);
-    NCode = pMsg->Data.v;
-    switch(Id) {
-    case ID_LISTVIEW_0: // Notifications sent by 'Listview'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_SEL_CHANGED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    // USER START (Optionally insert additional code for further Ids)
-    // USER END
-    }
-    break;
-  // USER START (Optionally insert additional message handling)
-  // USER END
+   
   default:
-    WM_DefaultProc(pMsg);
-    break;
+       WM_DefaultProc(pMsg);
+       break;
   }
 }
 
@@ -235,6 +200,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
 	 const WM_KEY_INFO * pInfo;
 	 WM_HWIN thisListView  = pMsg->hWin; 
 	 WM_MESSAGE myMsg;
+  int i  = 0;
  
   MNT_BERTH * pIterator  = NULL;
  
@@ -245,9 +211,20 @@ static void myListViewListener(WM_MESSAGE* pMsg)
   {
    case WM_SET_FOCUS:
 
-        if(LISTVIEW_GetNumRows(pMsg->hWin))
-           LISTVIEW_SetSel(pMsg->hWin, 0);
-   
+        if(pMsg->Data.v)
+        {
+           if(LISTVIEW_GetNumRows(pMsg->hWin))
+           {
+              LISTVIEW_SetSel(pMsg->hWin, 0);
+           } 
+           if(pMntHeader)
+           {
+              myMsg.hWin  = WM_GetClientWindow(mntSettingWin);
+              myMsg.MsgId = USER_MSG_LV_MOVE;
+              myMsg.Data.p  = (void*)pMntHeader;           
+              WM_SendMessage(myMsg.hWin, &myMsg);
+           }
+        }
         LISTVIEW_Callback(pMsg);
         break;
 
@@ -255,26 +232,67 @@ static void myListViewListener(WM_MESSAGE* pMsg)
    case WM_KEY:
         pInfo  = (WM_KEY_INFO*)pMsg->Data.p;
    
-    switch(pInfo->Key)
-    {
+      switch(pInfo->Key)
+      {
+       case GUI_KEY_PWM_INC:       
+            WM_SendMessageNoPara(subWins[3], USER_MSG_DIM);
+            break;
        case GUI_KEY_UP:
        case GUI_KEY_DOWN:
-            LISTVIEW_Callback(pMsg);     
-            break;
-       
-       case GUI_KEY_LEFT:				
-            WM_SetFocus(menuWin);
+            LISTVIEW_Callback(pMsg); 
+            selectedRow  = LISTVIEW_GetSel(thisListView);            
+            pIterator  = pMntHeader;
+            for(index=0; index < selectedRow; index++)
+            {
+               pIterator  = pIterator->pNext;
+            }
+            myMsg.hWin     = WM_GetClientWindow(mntSettingWin);
+            myMsg.MsgId    = USER_MSG_LV_MOVE;
+            myMsg.Data.p   = (void*)pIterator;           
+            WM_SendMessage(myMsg.hWin, &myMsg);
             break;
        
        case GUI_KEY_RIGHT:
-            WM_SetFocus(mntSettingWin);
-//            WM_SetFocus(_mntSettingWin);
+            if(pMntHeader)
+            {
+               selectedRow  = LISTVIEW_GetSel(thisListView);
+               pIterator  = pMntHeader;
+               for(index=0;  index < selectedRow; index++)
+               {
+                  pIterator  = pIterator->pNext;
+               }
+               
+               if(pIterator)
+               {
+                  if(pIterator->chsState == MNTState_Monitored)
+                  {
+                     pIterator->chsState  = MNTState_Choosen;
+                     LISTVIEW_SetItemText(thisListView, 2, selectedRow, "吖");
+                  }
+                  else if(pIterator->chsState == MNTState_None)
+                  {
+                     pIterator->chsState  = MNTState_Default;
+                     LISTVIEW_SetItemText(thisListView, 2, selectedRow, "吖");
+                  }     
+               }
+//               else
+//               {
+//                  INFO("Err!");            
+//               }
+               myMsg.hWin     = WM_GetClientWindow(mntSettingWin);
+               myMsg.hWinSrc  = pMsg->hWin;
+               myMsg.Data.p   = (void*)pIterator;           
+               
+               myMsg.MsgId    = USER_MSG_FOCUS;                
+               WM_SendMessage(myMsg.hWin, &myMsg);                
+            }
+//            WM_SetFocus(mntSettingWin);
             break;
           
        case GUI_KEY_ENTER:
-       
             selectedRow  = LISTVIEW_GetSel(thisListView);
             pIterator  = pMntHeader;
+            
             for(index=0;index<selectedRow;index++)
             {
               pIterator  = pIterator->pNext;
@@ -283,7 +301,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
             switch(pIterator->chsState)
             {
                case MNTState_Choosen:
-                    pIterator->chsState  = MNTState_Monited;
+                    pIterator->chsState  = MNTState_Monitored;
                     LISTVIEW_SetItemText(thisListView, 2, selectedRow, "啊");
                     break;
                case MNTState_Default:
@@ -298,21 +316,26 @@ static void myListViewListener(WM_MESSAGE* pMsg)
                     pIterator->chsState  = MNTState_Choosen;
                     LISTVIEW_SetItemText(thisListView, 2, selectedRow, "吖");
                     break;
-            }
-      
+            }      
             break;
         
-       case GUI_KEY_BACKSPACE:   
-
-               myMsg.hWin  = WM_GetClientWindow(confirmWin);
-               myMsg.hWinSrc  = thisListView;
-               myMsg.MsgId  = USER_MSG_CHOOSE;
-               myMsg.Data.v = STORE_SETTING;
+       case GUI_KEY_BACKSPACE:  
+            if(pMntHeader)
+            {
+               pIterator  = pMntHeader;
+               while(pIterator)
+               {
+                  pIterator->chsState  = MNTState_Monitored;
+                  
+                  pIterator  = pIterator->pNext;
+               }
+               myMsg.hWin  = WM_GetClientWindow(menuWin);               
+               myMsg.MsgId  = USER_MSG_DFULT_CNT;
+               myMsg.Data.v  = 0;
                WM_SendMessage(myMsg.hWin, &myMsg);
-                     
-               WM_BringToTop(confirmWin);
-               WM_SetFocus(WM_GetDialogItem (confirmWin,GUI_ID_BUTTON0));
-               break;	
+            }             
+            WM_SetFocus(menuWin);
+            break;	
        
        case GUI_KEY_MENU:
             WM_BringToTop(mapWin);
@@ -325,22 +348,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
     }
     break;
    
-   case USER_MSG_REPLY:
-        switch(pMsg->Data.v)
-        {
-           case REPLY_OK:
-                MNT_makeSettingUp(&mntSetting);        
-                WM_SetFocus(menuWin);
-                break;
-           case REPLY_CANCEL:        
-                WM_SetFocus(pMsg->hWin);
-                break;
-                
-            default:
- INFO("Something err!");           
-            break;
-        }
-   break;
+   
    
    default:
     LISTVIEW_Callback(pMsg);
@@ -357,7 +365,6 @@ static void updateListViewContent(WM_HWIN thisHandle)
 {
  	WM_HWIN thisListView  = thisHandle;
 	
-  int i  = 0;
   int Cnt = 0;
   int NumOfRows  = 0;
   MNT_BERTH * pIterator  = NULL;
@@ -369,33 +376,41 @@ static void updateListViewContent(WM_HWIN thisHandle)
   pIterator  = pMntHeader;
   while(pIterator)
   {
-
-     Cnt++;  
-     if(Cnt > NumOfRows)
+     if(pIterator->chsState != MNTState_Cancel)
      {
-        LISTVIEW_AddRow(thisListView, NULL);
-        NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+        Cnt++;  
+        if(Cnt > NumOfRows)
+        {
+           LISTVIEW_AddRow(thisListView, NULL);
+           NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+        }
+        
+        sprintf(pStrBuf, "%s", pIterator->mntBoat.name);
+        LISTVIEW_SetItemText(thisListView, 0, Cnt-1, pStrBuf);
+      
+        sprintf(pStrBuf, "%09ld", pIterator->mntBoat.mmsi);
+        LISTVIEW_SetItemText(thisListView, 1, Cnt-1, pStrBuf);
+        
+        LISTVIEW_SetItemText(thisListView, 2, Cnt-1, (MNTState_Default==pIterator->chsState)?"吖":"啊");  
+//        if(pIterator->chsState == MNTState_Choosen  ||  pIterator->chsState == MNTState_Default)
+//        {
+//           
+//        }
      }
-     
-     sprintf(pStrBuf, "%s", pIterator->mntBoat.name);
-     LISTVIEW_SetItemText(thisListView, 0, Cnt-1, pStrBuf);
-   
-     sprintf(pStrBuf, "%09ld", pIterator->mntBoat.mmsi);
-     LISTVIEW_SetItemText(thisListView, 1, Cnt-1, pStrBuf);
-     
-     LISTVIEW_SetItemText(thisListView, 2, Cnt-1, (MNTState_Default==pIterator->chsState)?"吖":"啊");  
-     
      pIterator  = pIterator->pNext;
   }
   while(NumOfRows > Cnt)
   {
-    LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
-    NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+     LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
+     NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+  }
+  
+  if(NumOfRows == 0)
+  {
+     LISTVIEW_AddRow(thisListView, NULL);
   }
 }
 
-
-//int getSelectedBoatIndex(WM_HWIN thisHandle, int col, int row)
 
 
 

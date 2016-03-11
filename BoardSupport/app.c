@@ -12,24 +12,29 @@
 #include "sysConf.h"
 #include "uart.h"
 #include "SPI1.h"
+#include "GUI.h"
+#include "dlg.h"
+#include "sound.h"
+#include "bully.h"
 
 
 //#ifndef test_test
 //	#define test_test
 //#endif
 
-
 /*-------------------- Macro defines ---------------------*/
 /* 定义任务优先级 */
-#define UI_Task_PRIO             11
+#define UI_Task_PRIO             12
 #define Insert_Task_PRIO         8
 #define Refresh_Task_PRIO        9
-#define Task_Stack_Use_PRIO      10  
+#define Play_Task_PRIO           11
+
 /* 定义任务堆栈大小 */
-#define USER_TASK_STACK_SIZE 2000
+#define USER_TASK_STACK_SIZE 2048
 #define TOUCH_TASK_STACK_SIZE 256
 #define KEY_TASK_STACK_SIZE 128
-#define Task_Stack_Use_STACK_SIZE 128
+
+#define PLAY_TAST_STACK_SIZE 128
 
 /*------------------- static ----------------------------*/
 /* 定义任务堆栈 */
@@ -39,7 +44,9 @@ static	OS_STK	UI_Task_Stack[USER_TASK_STACK_SIZE];
 static	OS_STK	Insert_Task_Stack[TOUCH_TASK_STACK_SIZE];
 
 static	OS_STK	Refresh_Task_Stack[KEY_TASK_STACK_SIZE];
-static  OS_STK  Task_Stack_Use_Stack[Task_Stack_Use_STACK_SIZE];
+
+
+static OS_STK Play_Task_Statck[PLAY_TAST_STACK_SIZE];
 
 //static  OS_STK_DATA UI_Task_Stack_Use;
 //static  OS_STK_DATA Insert_Task_Stack_Use;
@@ -54,7 +61,9 @@ void mntSetting_init(void);
 ///Insert , Refresh互斥信号量
 int isKeyTrigged  = 0;
 
+unsigned char isChecked  = 0;
 
+Bool gIsMute  = FALSE;
 
 int ReleasedDectSwitch  = 0;
 
@@ -100,15 +109,22 @@ extern int insert_24A(struct message_24_partA * p_msg);
 extern int insert_24B(type_of_ship * p_msg);
 extern void updateTimeStamp(void);
 
+extern void getMntWrapPara(long* pLg, long* pLt, map_scale* pScale);
+
 /*----------------- External variables -----------------------*/
-extern boat mothership;
+boat mothership;
+mapping center;
+
 extern volatile int xlCnt;
+
+extern long MapPara_lg;
+extern long MapPara_lt;
+extern map_scale MapPara_scale;
 
 
 struct message_18 msg_18;
 
 int N_boat = 0;
-static int LPC_recCnt  = 0;
 /*----------------- local   function  --------------------*/
 
 
@@ -116,137 +132,313 @@ void SysTick_Init(void);
 
 
 
-
-
-
-///* ADDRESS: 0xAC000000  SIZE: 0x400000  */
-
-
-
-
 void UI_Task(void *p_arg)/*描述(Description):	任务UI_Task*/
 {
-	
-//	while(1)
-//	{ 
-//		OSTimeDly(200);	
 		MainTask();
-//	}
 }
-/*描述(Description):	任务Insert_Task*/
+
+
+
 void Insert_Task(void *p_arg)  //等待接收采集到的数据
 { 
-	int tmp  = 0;
+   int tmp  = 0;
 
-	uint8_t *s; 
-	INT8U err;
-//	static int a=0;
-	message_18 text_out;
-	message_24_partA text_out_24A;
-	type_of_ship text_out_type_of_ship; 
-// USER_Init();
-	while(1)
-	{	
+   uint8_t *s; 
+   INT8U err;
+  //	static int a=0;
+   message_18 text_out;
+   message_24_partA text_out_24A;
+   type_of_ship text_out_type_of_ship; 
+  // USER_Init();
+   while(1)
+   {	
 
-		s = OSQPend(QSem,0,&err);
-  
-  LPC_recCnt++; 
- 
-    tmp  = translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship); 
-    OSMutexPend(Refresher, 0, &myErr);        
-    switch(tmp)
-    {
-       case 18:
-            insert_18(&text_out);
-            break;
-        case 240:
-            insert_24A(&text_out_24A);
-            break;
-        case 241:       
-            insert_24B(&text_out_type_of_ship);       
-            break;
-        default:
-         break;
-    }
-OSMutexPost(Refresher);    
-//		OSMemPut(PartitionPt,s);
+      s = OSQPend(QSem,0,&err);    
+      tmp  = translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship); 
+      OSMutexPend(Refresher, 0, &myErr);        
+      switch(tmp)
+      {
+         case 18:      
+              insert_18(&text_out);
+              break;
+          case 240:
+              insert_24A(&text_out_24A);
+              break;
+          case 241:       
+              insert_24B(&text_out_type_of_ship);       
+              break;
+          default:
+           break;
+      }
+    OSMutexPost(Refresher);    
+    OSTimeDly(20); 
 
-
-		OSTimeDly(20); 
-
-	}
+   }
 }
+
+
 void Refresh_Task(void *p_arg)//任务Refresh_Task
 {
- int i  = 0;
 
-	while(1)
-	{
-  OSMutexPend(Refresher, 0, &myErr);
-//  OSMutexPend(Updater, 0, &myErr_2);
-  updateTimeStamp();
-  OSMutexPost(Refresher); 
+   MapPara_lg  = mothership.longitude;
+   MapPara_lt  = mothership.latitude;
+   MapPara_scale.pixel  = 100;
+   MapPara_scale.minute  = 100;
+   while(1)
+   {
+    OSMutexPend(Refresher, 0, &myErr);
+//    OSSchedLock();
+    updateTimeStamp();    
+    check();
+    getMntWrapPara(&MapPara_lg, &MapPara_lt, &MapPara_scale);
+//    OSSchedUnlock();
+    OSMutexPost(Refresher);
 
-  if(xlCnt > 10)
-  {
-INFO("fuck fuck fuck");    
-  }
-  else
-  {
-     xlCnt++;
-  }
-//  UART_SendByte(2, 'k');
-#ifdef CODE_CHECK 
-       check();
-#endif 
 
-//  CurMntBoatIndex++;
-//  CurMntBoatIndex  = CurMntBoatIndex%N_monitedBoat;
-  
-  
-		OSTimeDlyHMSM(0,0,5,0);
-	}
+    isChecked  = 1;
+    
+    
+       
+    OSTimeDlyHMSM(0,0,5,0);
+   }
 }
-void Task_Stack_Use(void *p_arg)
+ 
+ 
+void Play_Task(void* p_arg) 
 {
-	OS_MEM_DATA MemInfo;
-	
-	while(1)
-	{
-		OSMemQuery(PartitionPt,&MemInfo);
-		printf("\r\n**********%d----------\n\r",MemInfo.OSNUsed);
-		printf("\r\n**********%d**********\n\r",MemInfo.OSNFree);
-		OSTimeDly(1000); 		/* 延时8000ms */
-	}
+   uint8_t  Nums[3];
+   uint8_t playList  = 1;
+
+   MNT_BERTH* thisMntBerth  = NULL;
+   BULY_BERTH* thisBulyBerth  = NULL;
+   
+   while(1)
+   {  
+      BULY_dump();
+      
+      if(playList == 1)
+      {
+         thisBulyBerth   = BULY_fetchNextPlayBerth();
+         if(thisBulyBerth)
+         {
+            
+            ///
+            playList  = 2;
+         }
+      }
+      else
+      {     
+         thisMntBerth  = MNT_fetchNextPlayBerth();
+         if(gIsMute == FALSE  &&  thisMntBerth)
+         {         
+            switch( (thisMntBerth->trgState&0xf0))
+            {
+               case (0x01<<7):
+                    if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                    {         
+                       SND_Play(thisMntBerth->nickName[0] - '0');
+                       OSTimeDlyHMSM(0, 0, 0, 600);
+                    }
+                    if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                    {
+                       SND_Play(thisMntBerth->nickName[1] - '0');
+                       OSTimeDlyHMSM(0, 0, 0, 800 );
+                       SND_Play(SND_ID_DEV);
+                       OSTimeDlyHMSM(0, 0, 1, 400);
+                    }            
+                    SND_Play(SND_ID_DSP);
+                    OSTimeDlyHMSM(0, 0, 1, 200);
+                    
+                    SND_ParseDist(thisMntBerth->snapDist, Nums);
+                    SND_Play(SND_ID_DST);
+                    OSTimeDlyHMSM(0, 0, 1, 600);
+                    
+                    if(Nums[0])                    
+                    {
+                       SND_Play(Nums[0]);
+                       OSTimeDlyHMSM(0, 0, 0, 800);
+                    }
+                    if(Nums[1])
+                    {
+                       SND_Play(Nums[1]);
+                       OSTimeDlyHMSM(0, 0, 0, 800);                      
+                    }
+                    if(Nums[2])
+                    {
+                       SND_Play(Nums[2]);
+                       OSTimeDlyHMSM(0, 0, 1, 0);                    
+                    }
+                    SND_Play(SND_ID_NM);
+                    
+                    break;
+                    
+               case (0x01<<6):
+                    if(thisMntBerth->mntBoat.mntSetting.DRG_Setting.isSndEnable)
+                    {
+                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                       {         
+                          SND_Play(thisMntBerth->nickName[0] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 600);
+                       }
+                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                       {
+                          SND_Play(thisMntBerth->nickName[1] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 800 );
+                          SND_Play(SND_ID_DEV);
+                          OSTimeDlyHMSM(0, 0, 1, 400);
+                       }                  
+                    
+                       SND_Play(SND_ID_DRG);
+                       OSTimeDlyHMSM(0, 0, 1, 0);
+                       if(thisMntBerth->pBerth->Boat.dist < 99999)
+                       {
+                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);                  
+                          SND_Play(SND_ID_DST);
+                          OSTimeDlyHMSM(0, 0, 1, 400);
+                          
+                          if(Nums[0])                    
+                          {
+                             SND_Play(Nums[0]);
+                             OSTimeDlyHMSM(0, 0, 0, 800);
+                          }
+                          if(Nums[1])
+                          {
+                             SND_Play(Nums[1]);
+                             OSTimeDlyHMSM(0, 0, 0, 800);                      
+                          }
+                          if(Nums[2])
+                          {
+                             SND_Play(Nums[2]);
+                             OSTimeDlyHMSM(0, 0, 1, 0);                    
+                          }
+                          SND_Play(SND_ID_NM);
+                       } 
+                    }                 
+                    break;
+                    
+               case (0x01<<5):
+                    if(thisMntBerth->mntBoat.mntSetting.BGL_Setting.isSndEnable)
+                    {
+                    
+                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                       {         
+                          SND_Play(thisMntBerth->nickName[0] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 600);
+                       }
+                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                       {
+                          SND_Play(thisMntBerth->nickName[1] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 800 );
+                          SND_Play(SND_ID_DEV);
+                          OSTimeDlyHMSM(0, 0, 1, 400);
+                       }                  
+                       SND_Play(SND_ID_BGL);
+                       OSTimeDlyHMSM(0, 0, 1, 0);          
+
+                       if(thisMntBerth->pBerth->Boat.dist < 99999)
+                       {
+                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);
+                          SND_Play(SND_ID_DST);
+                          OSTimeDlyHMSM(0, 0, 1, 400);
+                          
+                          if(Nums[0])                    
+                          {
+                             SND_Play(Nums[0]);
+                             OSTimeDlyHMSM(0, 0, 0, 800);
+                          }
+                          if(Nums[1])
+                          {
+                             SND_Play(Nums[1]);
+                             OSTimeDlyHMSM(0, 0, 0, 800);                      
+                          }
+                          if(Nums[2])
+                          {
+                             SND_Play(Nums[2]);
+                             OSTimeDlyHMSM(0, 0, 1, 0);                    
+                          }
+                          SND_Play(SND_ID_NM);
+                       } 
+                    }                 
+                    break;
+            }
+            
+         }
+         else
+         {
+             ;    
+         }
+      
+         playList  = 2;
+      }
+
+      OSTimeDlyHMSM(0, 0,  5,  0);
+   }
+   
+
 }
+ 
+ 
 void App_TaskStart(void)//初始化UCOS，初始化SysTick节拍，并创建三个任务
 {
 	INT8U err;
-  
-  int i  = 0;
 
-  mothership.latitude = MOTHERShIP_LA;
-  mothership.longitude = MOTHERShIP_LG;
+  mothership.latitude = MOTHERSHIP_LA;
+  mothership.longitude = MOTHERSHIP_LG;
   mothership.true_heading  = 0;
+  
+  center.lgtude  = MOTHERSHIP_LG;
+  center.lttude  = MOTHERSHIP_LA;
   
   SPI1_DMA_Init();
   SPI1_Int();
+   
+  OSInit();  
+  SysTick_Init();/* 初始化SysTick定时器 */
+  Refresher  = OSMutexCreate(6,&myErr);
+  Updater    = OSMutexCreate(6,&myErr_2);
+  QSem = OSQCreate(&MsgQeueTb[0],MSG_QUEUE_TABNUM); //创建消息队列，10条消息
+  PartitionPt=OSMemCreate(Partition,MSG_QUEUE_TABNUM,100,&err);
   
-	OSInit();  
-	SysTick_Init();/* 初始化SysTick定时器 */
- Refresher  = OSMutexCreate(6,&myErr);
- Updater    = OSMutexCreate(6,&myErr_2);
-	QSem = OSQCreate(&MsgQeueTb[0],MSG_QUEUE_TABNUM); //创建消息队列，10条消息
-	PartitionPt=OSMemCreate(Partition,MSG_QUEUE_TABNUM,100,&err);
-	
-	OSTaskCreateExt(UI_Task, (void *)0,(OS_STK *)&UI_Task_Stack[USER_TASK_STACK_SIZE-1],  UI_Task_PRIO, UI_Task_PRIO, (OS_STK *)&UI_Task_Stack[0], USER_TASK_STACK_SIZE,(void*)0, OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );/* 创建任务 UI_Task */
-	OSTaskCreateExt(Insert_Task,(void *)0,(OS_STK *)&Insert_Task_Stack[TOUCH_TASK_STACK_SIZE-1],Insert_Task_PRIO,Insert_Task_PRIO,(OS_STK *)&Insert_Task_Stack[0],TOUCH_TASK_STACK_SIZE,(void*)0,OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );/* 创建任务 Insert_Task */
-	OSTaskCreateExt(Refresh_Task,  (void *)0,(OS_STK *)&Refresh_Task_Stack[KEY_TASK_STACK_SIZE-1],    Refresh_Task_PRIO,  Refresh_Task_PRIO  ,(OS_STK *)&Refresh_Task_Stack[0],  KEY_TASK_STACK_SIZE,(void*)0,  OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR);/* 创建任务 Refresh_Task */
-//	OSTaskCreate(Task_Stack_Use,(void *)0,(OS_STK *)&Task_Stack_Use_Stack[Task_Stack_Use_STACK_SIZE-1],  Task_Stack_Use_PRIO);/* 创建任务 Refresh_Task */
-//lpc1788_DMA_Init();  
-//	DMA_Config(1);
+  OSTaskCreateExt(     UI_Task, 
+                       (void *)0,
+                       (OS_STK *)&UI_Task_Stack[USER_TASK_STACK_SIZE-1],  
+                       UI_Task_PRIO, UI_Task_PRIO, 
+                       (OS_STK *)&UI_Task_Stack[0], 
+                       USER_TASK_STACK_SIZE,
+                       (void*)0, 
+                       OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );/* 创建任务 UI_Task */
+                       
+  OSTaskCreateExt(     Insert_Task,
+                       (void *)0,
+                       (OS_STK *)&Insert_Task_Stack[TOUCH_TASK_STACK_SIZE-1],
+                       Insert_Task_PRIO,
+                       Insert_Task_PRIO,
+                       (OS_STK *)&Insert_Task_Stack[0],
+                       TOUCH_TASK_STACK_SIZE,
+                       (void*)0,
+                       OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );/* 创建任务 Insert_Task */
+                       
+  OSTaskCreateExt(     Refresh_Task,   
+                       (void *)0,
+                       ( OS_STK *)&Refresh_Task_Stack[KEY_TASK_STACK_SIZE-1],    
+                       Refresh_Task_PRIO,  
+                       Refresh_Task_PRIO  ,
+                       (OS_STK *)&Refresh_Task_Stack[0],  
+                       KEY_TASK_STACK_SIZE,
+                       (void*)0,  
+                       OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR);/* 创建任务 Refresh_Task */
+                       
+  OSTaskCreateExt(     Play_Task,
+                       (void*)0,
+                       (OS_STK*)&Play_Task_Statck[PLAY_TAST_STACK_SIZE-1],
+                       Play_Task_PRIO,
+                       Play_Task_PRIO,
+                       (OS_STK*)&Play_Task_Statck[0],
+                       PLAY_TAST_STACK_SIZE,
+                       (void*)0,
+                       OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );
 
-	OSStart();
+  OSStart();
 }
 
 //		switch(translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship))
@@ -254,8 +446,8 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
 {
   int i=0,comma=0;
   int tmp  = 0;
-  unsigned long tempgprmc  = 0;
-  unsigned long shiftReg  = 0;
+
+  long shiftReg  = 0;
   
   if((text[0]!='!')&&(text[0]!='$'))
     return 0;
@@ -275,12 +467,15 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
           i++;     
           tmp  = change_table(text[i]);
            
+          
           switch(tmp)
           {
-            case 18:           
-                 (*text_out)=translate_m18(text,i);
+            case 19: 
+                 (*text_out)  = translate_m18(text,i);
                  return 18;
-
+            case 18:
+                 (*text_out)=translate_m18(text,i);
+                 return 18;           
             case 24:            
                 if(change_table(text[i+6])&12)
                 {
@@ -294,6 +489,7 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
                 }
                             
            default:
+           
                 return tmp;
            
          }
@@ -304,7 +500,7 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
       }
   }
 
-	else if((text[1]=='G')&&(text[2]=='P')&&(text[3]=='R')&&(text[4]=='M')&&(text[5]=='C')) //GPS GPRMC
+	else if((text[4]=='M')&&(text[5]=='C')) //GPS GPRMC
 	{
 //    tempgprmc = text[6]; mothership.latitude = tempgprmc << 24;
 //    tempgprmc = text[7]; mothership.latitude = mothership.latitude + (tempgprmc << 16);
@@ -315,7 +511,7 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
     shiftReg   = (shiftReg << 8) | text[7];
     shiftReg   = (shiftReg << 8) | text[8];
     shiftReg   = (shiftReg << 8) | text[9];
-    if(shiftReg)
+    if(shiftReg )
        mothership.latitude  = shiftReg / 10;
     
     

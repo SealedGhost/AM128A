@@ -21,8 +21,7 @@ typedef struct {
 static void _Paint(BUTTON_Obj * pObj, BUTTON_Handle hObj)
 {
    const char * s  = NULL;
-   int i  ;
-   GUI_RECT r,focusRect;
+   GUI_RECT r;
    GUI_COLOR txColor;
    GUI_COLOR vColor;
    
@@ -62,10 +61,21 @@ static void _Paint(BUTTON_Obj * pObj, BUTTON_Handle hObj)
   
    if(pObj->v)
    {
+      int strX  = 0;
+      int strY  = 0;
+      
+      sprintf(pStrBuf, "%d", pObj->v);
+      
+      GUI_SetColor(GUI_LIGHTRED);
+      GUI_AA_FillCircle(r.x1-16,   r.y0+16,  8);
+   
       GUI_SetFont(pObj->vFont);
+      
       LCD_SetColor(vColor);
-      sprintf(pStrBuf, "%2d", pObj->v);
-      GUI_DispStringAt(pStrBuf, r.x1 - 16, r.y0);   
+
+      strX  = GUI_GetStringDistX(pStrBuf);
+      strY  = GUI_GetYDistOfFont(pObj->vFont);
+      GUI_DispStringAt(pStrBuf, r.x1-16-strX/2, r.y0+16-strY/2    );   
    }
 }
 
@@ -78,7 +88,6 @@ static void _Paint(BUTTON_Obj * pObj, BUTTON_Handle hObj)
 static void _OnKey(BUTTON_Handle hObj, WM_MESSAGE * pMsg)
 {
    const WM_KEY_INFO * pKeyInfo;
-   WM_MESSAGE myMsg;
    int Key;
    pKeyInfo  = (const WM_KEY_INFO*)(pMsg->Data.p);
    Key  = pKeyInfo->Key;
@@ -334,3 +343,6 @@ void HSD_BUTTON_SetVFocusColor(BUTTON_Handle hObj, GUI_COLOR Color)
       WM_UNLOCK();
    }
 }
+
+
+

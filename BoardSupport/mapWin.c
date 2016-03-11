@@ -7,36 +7,48 @@
 #include "skinColor.h"
 #include "str.h"
 #include "drawThings.h"
+#include "30.h"
+#include "snap.h"
+
+extern GUI_CONST_STORAGE GUI_BITMAP bmgg;
 
 #define ID_WINDOW_0    (GUI_ID_USER + 0x00)
-
 
 
 /*-------------------------- Global variables -----------------------------*/
 WM_HWIN mapWin;
 
+char scale_choose = 1;
 
+
+static void (*pfnSetView)(long, long, map_scale*)  = setAutoView;
+
+FunctionalState isMntEnable  = ENABLE;
 
 
 /*-------------------------- external variables ---------------------------*/
 extern Bool isReleasedDet;
+extern boat mothership;
+extern map_scale AutoScale;
 
+extern Bool gIsMute;
 
-/*-------------------------- global variables ------------------------------*/
-boat mothership;
-char scale_choose = 1;
+extern GUI_MEMDEV_Handle hMute;
+
+extern char* pDebugString;
 
 /*------------------------- local variables --------------------------------*/
 
-const GUI_RECT Rect_MapWin[]  = {MAP_LEFT, 0,       MAP_RIGHT, MAP_BOTTOM};   /// Map Window area.
-const GUI_RECT Rect_Title[]  =  {MAP_LEFT, 0,       MAP_RIGHT, MAP_TOP-1};    /// Title of mapWin area.
-const GUI_RECT Rect_Map[]  =    {MAP_LEFT, MAP_TOP, MAP_RIGHT, MAP_BOTTOM};   /// Map area in mapWin.
-
+const GUI_RECT Rect_MapWin  = {MAP_LEFT, 0,       MAP_RIGHT, MAP_BOTTOM};   /// Map Window area.
+const GUI_RECT Rect_Title  =  {MAP_LEFT, 0,       MAP_RIGHT, MAP_TOP-1};    /// Title of mapWin area.
+const GUI_RECT Rect_Map  =    {MAP_LEFT, MAP_TOP, MAP_RIGHT, MAP_BOTTOM};   /// Map area in mapWin.
+GUI_RECT Rect_WrapMntSwitcher  = {MAP_LEFT+20, MAP_BOTTOM-110, MAP_LEFT+20+80, MAP_BOTTOM-30};
 
 
 /// Timer about
 static WM_HTIMER reTimer;
-static WM_HTIMER cursorTimer;
+static WM_HTIMER cursorTimer; 
+
 
 /// Cursor about
 static short Dir_x  = 0;
@@ -47,18 +59,19 @@ static _cursor tmp_cursor;
 /// Skin color
 static const MapWin_COLOR * pSkin  = mapSkins;  
 
-
-static unsigned int drawMapSwitch  = 1;
 static unsigned int drawMapSwitchCnt  = 0;
 
+
+static MNT_BERTH* pCurPlayBerth  = NULL;
 
 long temp_lat = 1920726,temp_long = 7305545;
 
 
-mapping center;
-boat mothership;
+extern mapping center;
 
-static void onCursorMoved();
+
+static void onCursorMoved(void);
+static void zoom(void);
 
 
 static void _cbWindowAllFishMap(WM_MESSAGE* pMsg) 
@@ -69,7 +82,6 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
 
  WM_MESSAGE myMsg;
 
-	short i = 0;
 	
 	temp_lat  = __cursor.latitude;
 	temp_long  = __cursor.longitude ;
@@ -84,6 +96,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
        /// Initializaton of skin .
        pSkin  = &(mapSkins[SysConf.Skin]);
        setBoatSkin(SysConf.Skin); 
+       setShape(SysConf.Shape);
        /// Initializaton of center
 //       center.lgtude  = mothership.longitude;
 //       center.lttude  = mothership.latitude;
@@ -94,6 +107,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
        /// Do not exist monited boat.
        if(!pMntHeader)
        {
+          GUI_CURSOR_Hide();
           myMsg.hWin  = WM_GetClientWindow(confirmWin);
           myMsg.hWinSrc  = pMsg->hWin;
           myMsg.MsgId  = USER_MSG_CHOOSE;
@@ -106,7 +120,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
        {
           WM_SetFocus(pMsg->hWin);
        }
-   		  reTimer  = WM_CreateTimer(pMsg->hWin, ID_TIMER_MAP_REFRESH,MAP_REFRESH_SLOT, 0);
+   		  reTimer  = WM_CreateTimer(pMsg->hWin, ID_TIMER_MAP_REFRESH,MAP_REFRESH_SLOT, 0);    
        break;
     
   case USER_MSG_SKIN: 
@@ -116,6 +130,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
        
   case USER_MSG_SHAPE:
        setShape(pMsg->Data.v);
+printf("setShape:%d\n\r", pMsg->Data.v);       
        break;
        
   case USER_MSG_REPLY:
@@ -136,43 +151,44 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
              break;
         
         case REPLY_CANCEL:
+             GUI_CURSOR_Show();
              WM_SetFocus(pMsg->hWin);
              break;
        }
        break;  
   
 		case WM_TIMER: 
-  
        if(ID_TIMER_CURSOR  == WM_GetTimerId(cursorTimer))
        {        
           onCursorMoved();
           WM_RestartTimer(pMsg->Data.v, 50);
        }
        else if(ID_TIMER_MAP_REFRESH == WM_GetTimerId(reTimer))
-       {		
+       {		      
           drawMapSwitchCnt++;
-          if(drawMapSwitchCnt > AUTO_ADAPTER_CNT)
+          if(drawMapSwitchCnt > CURSOR_HIDE_CNT)
           {
              drawMapSwitchCnt  = 0;
-             drawMapSwitch  = 0;
+             pfnSetView  = setAutoView;
+             SNAP_reset();
              GUI_CURSOR_Hide();
           }          
-          WM_InvalidateRect( hWin,Rect_MapWin);
+          WM_InvalidateRect( hWin,&Rect_MapWin);
           WM_RestartTimer(reTimer, MAP_REFRESH_SLOT);
        }
 
        break;
 
 		case WM_KEY: 
-       pKeyInfo  = (WM_KEY_INFO*)(pMsg->Data.p);    
-             
+       pKeyInfo  = (WM_KEY_INFO*)(pMsg->Data.p);                 
        drawMapSwitchCnt  = 0;
-       if(drawMapSwitch == 0)
-       {
-          drawMapSwitch  = 1;
-          WM_InvalidateRect(mapWin, Rect_Map);
-//          WM_Paint(mapWin);
-       }
+//       if(drawMapSwitch == 0)
+//       {
+//          drawMapSwitch  = 1;
+//          pfnSetView  = setManualView;
+//          WM_InvalidateRect(mapWin, &Rect_Map);
+////          WM_Paint(mapWin);
+//       }
        
      //		WM_InvalidateRect(hWin,Rect_Map);  
        if(!GUI_CURSOR_GetState())
@@ -200,21 +216,41 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
                   Dir_x  = 0;
                   Dir_y  = 1;             
                   break;
-          }             
+          }  
+          if(pfnSetView == setManualView)          
+          {
               WM_DeleteTimer(reTimer);
-              cursorTimer  = WM_CreateTimer(mapWin, ID_TIMER_CURSOR, 500, 0);
-            
-              onCursorMoved();            
+              cursorTimer  = WM_CreateTimer(mapWin, ID_TIMER_CURSOR, 500, 0);           
+//              onCursorMoved();            
+          }
+          else
+          {
+             SNAP_searchNearestObj(Dir_x, Dir_y);
+          }
        }
        else switch(pKeyInfo->Key)
        {
          case GUI_KEY_RELEASE:               
-              WM_DeleteTimer(cursorTimer);         
- 	            reTimer  = WM_CreateTimer(pMsg->hWin, ID_TIMER_MAP_REFRESH,MAP_REFRESH_SLOT, 0);          
+              WM_DeleteTimer(cursorTimer);                
+ 	            reTimer  = WM_CreateTimer(pMsg->hWin, ID_TIMER_MAP_REFRESH,MAP_REFRESH_SLOT, 0);                       
               break;
+
+         case GUI_KEY_CENTER:
+//              if(pfnSetView == setManualView)
+//                 pfnSetView  = setAutoView;
+//              else
+//                 pfnSetView  = setManualView;
+
+              if(pfnSetView == setManualView)
+              {
+                 pfnSetView  = setAutoView;
+                 WM_InvalidateRect(mapWin,&Rect_Map);
+                 WM_Paint(mapWin);
+              }
+
+              break; 
          /*----------------------   捕捉到中心按键按下的响应:    -----------------------*/
-         /*   中心按键按下后：将本船位置和光标显示到map中心点 */
-          
+         /*   确定按键按下后：将本船位置和光标显示到map中心点 */
          case GUI_KEY_ENTER:         
             /* 光标定位到中心 */
               __cursor.x = (MAP_LEFT+MAP_RIGHT)/2;
@@ -225,25 +261,61 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
               __cursor.longitude = mothership.longitude;
               
               center.lgtude  = mothership.longitude;
-              center.lttude  = mothership.latitude;
+              center.lttude  = mothership.latitude;            
               
               GUI_CURSOR_Hide();
               GUI_CURSOR_SetPosition(__cursor.x, __cursor.y);
-              WM_InvalidateRect(mapWin,Rect_Map);
+              WM_InvalidateRect(mapWin,&Rect_Map);
               WM_Paint(mapWin);
               GUI_CURSOR_Show();
               break;
      
         case GUI_KEY_LARGE: 
+             if(pfnSetView == setAutoView)
+             {
+                int i  = 0;
+                
+                pfnSetView  = setManualView;
+                
+                for(i=0; i<=MAX_GEAR; i++)
+                {
+                   if(measuring_scale[i].minute/measuring_scale[i].pixel < AutoScale.minute/AutoScale.pixel)
+                   {
+                       break;  
+                   }
+                }
+                scale_choose  = i;
+                zoom();
+                break;
+             }
+                
              if(scale_choose <MAX_GEAR)
                 scale_choose++;
-             WM_InvalidateRect( hWin,Rect_Map);//WM_Paint(hWin);
+             zoom();
              break;
      
         case GUI_KEY_REDUCE:   
+             if(pfnSetView == setAutoView)
+             {
+                int i  = 0;
+                
+                pfnSetView  = setManualView;
+              
+              
+                for(i=MAX_GEAR;i>=0; i--)
+                {
+                   if(measuring_scale[i].minute/measuring_scale[i].pixel > AutoScale.minute / AutoScale.pixel)
+                   {
+                      break;
+                   }
+                }
+                scale_choose  = i;
+                zoom();
+                break;
+             }
              if(scale_choose >0)
                 scale_choose--;
-             WM_InvalidateRect( hWin,Rect_Map);//WM_Paint(hWin);
+             zoom();
              break;
 					
         case GUI_KEY_MENU:	         
@@ -256,31 +328,47 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
              WM_ShowWindow(subWins[3]);
              WM_SetFocus(menuWin);
              break;
-
+        case GUI_KEY_PWM_INC:       
+             WM_SendMessageNoPara(subWins[3], USER_MSG_DIM);
+             break;
+        case GUI_KEY_MONITORING:
+             isMntEnable  = ENABLE;  
+             gIsMute  = FALSE;
+             MNT_Disable();
+             MNT_Enable();             
+             break;
+             
+        case GUI_KEY_CANCEL:       
+             isMntEnable  = DISABLE;
+             gIsMute  = TRUE;
+//             MNT_Disable();
+             break;             
 			     }
 		      break;
 			
 		case WM_PAINT: 
 /// Draw  map grid   
-  
-    
     GUI_SetBkColor(pSkin->bkColor);
-//    GUI_ClearRect(0,40, 800, 480);
-    GUI_ClearRectEx(Rect_Map);
-//    drawMapSwitch  = 1;
-    if(drawMapSwitch)
+    GUI_ClearRectEx(&Rect_Map);
+
+    (*pfnSetView)(center.lgtude, center.lttude, &measuring_scale[scale_choose]);
+         
+    pCurPlayBerth  = MNT_fetchPlayBerth();
+    if( (pCurPlayBerth->trgState&0x0f) == MNTState_Triggered)
     {
-       setView(center.lgtude, center.lttude, &measuring_scale[scale_choose]);
+       GUI_SetColor(GUI_RED);
+       if(pCurPlayBerth->nickName[0] >= '0'  &&  pCurPlayBerth->nickName[0] <= '9')
+          drawNum(pCurPlayBerth->nickName[0]-'0', 280, 100, 6);
+       if(pCurPlayBerth->nickName[1] >= '0'  &&  pCurPlayBerth->nickName[1] <= '9')
+          drawNum(pCurPlayBerth->nickName[1]-'0', 420, 100, 6);         
     }
-    else
-    {
-       setAutoView();
+    
+//    if(isMntEnable == DISABLE)
+    if(gIsMute == TRUE)
+    {   
+        GUI_SetColor(GUI_RED);
+        GUI_DrawBitmap(&bmgg, 30, 360);
     }
-   
-/// Draw map title 
-//    GUI_SetBkColor(pSkin->ttl_Label);   
-//    GUI_ClearRect(0,0,800,40);
-//    GUI_ClearRectEx(Rect_Title);
     
     GUI_DrawGradientV(MAP_LEFT,0,MAP_RIGHT,MAP_TOP-1,pSkin->ttl_bkTop,pSkin->ttl_bkBottom);
     
@@ -289,44 +377,62 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
     GUI_SetTextMode(GUI_TEXTMODE_TRANS);
     GUI_DispStringAt("N:",  0,   5);
     GUI_DispStringAt("E:",  150, 5);
-    GUI_DispStringAt("SOG:",300, 5);
-    GUI_DispStringAt("COG:",450, 5);
+    GUI_SetFont(&GUI_Font30);
+    GUI_DispStringAt("航速:",300, 0);
+    GUI_DispStringAt("航向:",480, 0);
     
     GUI_SetColor(pSkin->ttl_Context);
+    GUI_SetFont(&GUI_Font24B_1);
     
     lltostr(mothership.latitude, pStrBuf);
     GUI_DispStringAt(pStrBuf, 20, 5);
     lltostr(mothership.longitude, pStrBuf);
     GUI_DispStringAt(pStrBuf, 170, 5);
-    sprintf(pStrBuf, "%d", mothership.SOG);   
-    GUI_DispStringAt(pStrBuf, 360, 5);
-    sprintf(pStrBuf, "%d", mothership.COG);
-    GUI_DispStringAt(pStrBuf, 510, 5);
     
-    sprintf(pStrBuf, "%02ld-%02ld/%02ld  %02ld:%02ld",(SYS_Date%10000)/100,SYS_Date/10000,  SYS_Date%100, 
-                                           SYS_Time/10000+8, (SYS_Time%10000)/100);                                            
-    GUI_DispStringAt(pStrBuf, 600, 5);
-   
-//    GUI_SetPenSize(3);
-//    GUI_SetColor(pSkin->Title_HorLine);
-//    GUI_DrawLine(0, MAP_TOP-2, 800, MAP_TOP-2); 
+//    if(SysConf.Unit == UNIT_km)
+//    {
+//       int sog  = mothership.SOG * 18;
+//       sprintf(pStrBuf, "%3d.%02dkm", sog/100, sog%100);
+//    }
+//    else
+//    {
+//       sprintf(pStrBuf, "%2d.%dkt", mothership.SOG/10,mothership.SOG%10); 
+//    }
+    sprintf(pStrBuf, "%2d.%dkt", mothership.SOG/10, mothership.SOG%10);      
+    GUI_DispStringAt(pStrBuf, 360, 5);
+    
+    sprintf(pStrBuf, "%3d", mothership.COG/10);
+    pStrBuf[3]  = 194;
+    pStrBuf[4]  = 176;
+    pStrBuf[5]  = '\0';
+    GUI_DispStringAt(pStrBuf, 540, 5);
+
+    sprintf(pStrBuf, "%02ld/%02ld",(SYS_Date%10000)/100,SYS_Date/10000);  
+    GUI_DispStringAt(pStrBuf, 650, 5);
+    
+    sprintf(pStrBuf, "%02ld:%02ld", SYS_Time/10000+8, SYS_Time%10000/100);
+    GUI_DispStringAt(pStrBuf, 720, 5);
 
     GUI_SetPenSize(1);
     GUI_SetColor(GUI_DARKGRAY);
-    GUI_FillPolygon(Points_Compass_1, 3, 100, 100);
+    GUI_AA_FillPolygon(Points_Compass_1, 3, 100, 100);
     GUI_SetColor(GUI_GRAY);
-    GUI_FillPolygon(Points_Compass_2, 3, 101, 100);
+    GUI_AA_FillPolygon(Points_Compass_2, 3, 100, 100);
     GUI_SetColor(GUI_RED);
-    GUI_FillPolygon(Points_Compass_3, 3, 101, 101);  
+    GUI_AA_FillPolygon(Points_Compass_3, 3, 100, 100);  
     GUI_SetColor(GUI_DARKRED);
-    GUI_FillPolygon(Points_Compass_4, 3, 100, 101);
-
-
-
-		break;
+    GUI_AA_FillPolygon(Points_Compass_4, 3, 100, 100);
+    
+    if(pDebugString[0] )
+    {
+       GUI_DispStringAt("snap err", 50, 200);
+    }
+    
+	  	break;
 
 		default:
-			 WM_DefaultProc(pMsg);
+       WM_DefaultProc(pMsg);
+       break;
 	}
 }
 
@@ -360,17 +466,20 @@ static void onCursorMoved()
       if(   tmp_cursor.x < MAP_LEFT || tmp_cursor.x > MAP_RIGHT 
          || tmp_cursor.y < MAP_TOP ||  tmp_cursor.y > MAP_BOTTOM)
       { 
-         center.lgtude  = center.lgtude + measuring_scale[scale_choose].minute/measuring_scale[scale_choose].pixel * (MAP_WIDTH/2) * Dir_x ;
-         center.lttude  = center.lttude - measuring_scale[scale_choose].minute/measuring_scale[scale_choose].pixel * (MAP_HEIGHT/2) * Dir_y;
+//         center.lgtude  = center.lgtude + measuring_scale[scale_choose].minute/measuring_scale[scale_choose].pixel * (MAP_WIDTH/2) * Dir_x ;
+//         center.lttude  = center.lttude - measuring_scale[scale_choose].minute/measuring_scale[scale_choose].pixel * (MAP_HEIGHT/2) * Dir_y;       
+         center.lgtude  = tmp_cursor.longitude;
+         center.lttude  = tmp_cursor.latitude;
          
-         __cursor.x  = (MAP_LEFT+MAP_RIGHT)/2;
-         __cursor.y  = (MAP_TOP+MAP_BOTTOM)/2;
+         __cursor.x  = (MAP_LEFT+MAP_RIGHT) /2;
+         __cursor.y  = (MAP_TOP+MAP_BOTTOM) /2;
+        
          __cursor.longitude  = center.lgtude;
          __cursor.latitude  =  center.lttude;
      
          GUI_CURSOR_Hide();
          GUI_CURSOR_SetPosition(__cursor.x, __cursor.y);
-         WM_InvalidateRect(mapWin,Rect_Map);
+         WM_InvalidateRect(mapWin,&Rect_Map);
          WM_Paint(mapWin);
          GUI_CURSOR_Show();
       }
@@ -386,3 +495,23 @@ static void onCursorMoved()
       ;
    }
 }
+
+
+
+static void zoom(void)
+{
+   center.lgtude  = __cursor.longitude;
+   center.lttude  = __cursor.latitude;
+   
+   __cursor.x  = (MAP_LEFT+MAP_RIGHT) /2;
+   __cursor.y  = (MAP_TOP+MAP_BOTTOM) /2;
+   
+   WM_InvalidateRect(mapWin, &Rect_Map);
+   GUI_CURSOR_SetPosition(__cursor.x,  __cursor.y);
+   WM_Paint(mapWin);
+}
+
+
+
+
+

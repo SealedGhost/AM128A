@@ -6,10 +6,21 @@
 #include "map.h"
 #include "lpc_types.h"
 #include "sysConf.h"
+#include "Config.h"
 
 
 typedef enum _MNT_States MNT_States;
-enum _MNT_States  {MNTState_None=0,MNTState_Init, MNTState_Delete, MNTState_Choosen,MNTState_Default,MNTState_Monited,MNTState_Triggered,MNTState_Masked};
+enum _MNT_States  {  MNTState_None=0,
+                     MNTState_Cancel,   ///1
+                     MNTState_Add,
+                     MNTState_Init,     ///2
+                     MNTState_Pending,  ///3
+                     MNTState_Choosen,  ///4
+                     MNTState_Default,  ///5
+                     MNTState_Monitored,///6
+                     MNTState_Triggered,///7
+                     MNTState_Masked    ///8No
+                  };  
 
 
 typedef struct _boat _boat;
@@ -30,8 +41,8 @@ struct _boat
   short time_cnt; 
 
 	 int dist;
-	 long target;
-  char isHSD;
+  
+  char category;
 };
 
 
@@ -40,7 +51,8 @@ struct _BERTH
 {
    boat Boat;
    unsigned char mntState;
-   BERTH * pLast;
+   long isInvader;
+   BERTH * pPrev;
    BERTH * pNext;
 };
 

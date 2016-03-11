@@ -54,13 +54,13 @@ extern SIMP_BERTH Simp_Berthes[BOAT_NUM_MAX];
 
 
 /*------------------------- local variables ----------------------------*/
-static WM_HWIN dlgFrame;
+
 static WM_HWIN dlgTextContent;
-static WM_HWIN dlgBtOk;
-static WM_HWIN dlgBtCancel;
+
 static int Option  = 0;
 static WM_MESSAGE myMsg;
 static WM_HWIN Confim_BUTTON[2];
+
 static void myButton(WM_MESSAGE * pMsg);
 
 
@@ -79,14 +79,14 @@ static void myButton(WM_MESSAGE * pMsg);
 *
 *       _aDialogCreate
 */
-static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
-  { WINDOW_CreateIndirect, "Win_Confirm", GUI_ID_BUTTON2,      200,  120,  400,  200,  0, 0x64,0  },
-  { BUTTON_CreateIndirect, "OK",          GUI_ID_BUTTON0,      60,  110,   80,  40,    0, 0x0,  0 },
-  { BUTTON_CreateIndirect, "Cancel",      GUI_ID_BUTTON1, 260,  110,   80,  40,    0, 0x0,  0 },
-  { TEXT_CreateIndirect, "Text",          ID_TEXT_CONTENT,   0,   40,  400, 40, TEXT_CF_HCENTER, 0x0,  0 }
-  // USER START (Optionally insert additional widgets)
-  // USER END
-};
+//static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
+//  { WINDOW_CreateIndirect, "Win_Confirm", GUI_ID_BUTTON2,      200,  120,  400,  200,  0, 0x64,0  },
+//  { BUTTON_CreateIndirect, "OK",          GUI_ID_BUTTON0,      60,  110,   80,  40,    0, 0x0,  0 },
+//  { BUTTON_CreateIndirect, "Cancel",      GUI_ID_BUTTON1, 260,  110,   80,  40,    0, 0x0,  0 },
+//  { TEXT_CreateIndirect, "Text",          ID_TEXT_CONTENT,   0,   40,  400, 40, TEXT_CF_HCENTER, 0x0,  0 }
+//  // USER START (Optionally insert additional widgets)
+//  // USER END
+//};
 
 /*********************************************************************
 *
@@ -111,10 +111,9 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
 	
 	const WM_KEY_INFO* pInfo;
   WM_HWIN thisFrame  = pMsg->hWin;
-	WM_HWIN hWin;
+
   int     NCode;
   int     Id;
-  int i  = 0;
 	
 	int xSize;
 	int ySize;
@@ -124,121 +123,120 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
   switch (pMsg->MsgId) {
 		
   case WM_PAINT:
-		 xSize = WM_GetWindowSizeX(pMsg->hWin);
-		 ySize = WM_GetWindowSizeY(pMsg->hWin);
-	   GUI_DrawGradientRoundedV(0, 0, xSize - 1, ySize - 1, 20, pSkin->bkTop,pSkin->bkBottom);
-		break;
+       xSize = WM_GetWindowSizeX(pMsg->hWin);
+       ySize = WM_GetWindowSizeY(pMsg->hWin);
+       GUI_DrawGradientRoundedV(0, 0, xSize - 1, ySize - 1, 20, pSkin->bkTop,pSkin->bkBottom);
+       break;
 	
 	case USER_MSG_SKIN:
-		pSkin = &(cnfmWinSkins[pMsg->Data.v]);
-  
-  BUTTON_SetBkColor(Confim_BUTTON[0], BUTTON_BI_UNPRESSED, pSkin->bt_bkColor);
-  BUTTON_SetBkColor(Confim_BUTTON[1], BUTTON_BI_UNPRESSED, pSkin->bt_bkColor);
-		//BUTTON_SetBkColor(Confim_BUTTON[0],BUTTON_BI_UNPRESSED,pSkin->Bt_NOFOCUS);
-		//BUTTON_SetBkColor(Confim_BUTTON[1],BUTTON_BI_UNPRESSED,pSkin->Bt_NOFOCUS);
-		//BUTTON_SetBkColor (WM_GetDialogItem(pMsg->hWin,GUI_ID_BUTTON0),BUTTON_CI_UNPRESSED,pSkin->Bt_NOFOCUS);
-		//BUTTON_SetText(WM_GetDialogItem(pMsg->hWin, GUI_ID_BUTTON0), "确定");
-		
-		//TEXT_SetTextColor (WM_GetDialogItem(pMsg->hWin, ID_TEXT_CONTENT),pSkin->Text);
-//        if(pMsg->Data.v == SKIN_Night)    
-//           WINDOW_SetBkColor(pMsg->hWin, GUI_DARKGRAY); 
-//        else
-//           WINDOW_SetBkColor(pMsg->hWin, GUI_WHITE);
-//        break;  
+      pSkin = &(cnfmWinSkins[pMsg->Data.v]);
+    
+      BUTTON_SetBkColor(Confim_BUTTON[0], BUTTON_BI_UNPRESSED, pSkin->bt_bkColor);
+      BUTTON_SetBkColor(Confim_BUTTON[1], BUTTON_BI_UNPRESSED, pSkin->bt_bkColor);
+      
+      TEXT_SetTextColor(dlgTextContent, pSkin->text);
+      break;
+ 
 	//WM_INIT_DIALOG:
   case WM_CREATE:
     //
     // Initialization of 'bt_OK'
     //
-		BUTTON_CreateEx (60,110,80,40,thisFrame, WM_CF_HASTRANS  ,0,GUI_ID_BUTTON0);
-  Confim_BUTTON[0] = WM_GetDialogItem(pMsg->hWin, GUI_ID_BUTTON0);
-		WM_ShowWindow (Confim_BUTTON[0]);
-		BUTTON_SetText(Confim_BUTTON[0], "确定");
-	 BUTTON_SetFont(Confim_BUTTON[0], &GUI_Font30);
-		BUTTON_SetBkColor(Confim_BUTTON[0],BUTTON_BI_UNPRESSED,pSkin->bt_bkColor);
-		BUTTON_SetTextColor(Confim_BUTTON[0],BUTTON_BI_UNPRESSED,pSkin->bt_txColor);
-		WM_SetCallback(Confim_BUTTON[0], &myButton);
-    //
-    // Initialization of 'bt_Cancle'
-    //
-    BUTTON_CreateEx(260,  110,   80,  40,thisFrame,WM_CF_HASTRANS,0,GUI_ID_BUTTON1);
-    Confim_BUTTON[1] = WM_GetDialogItem(pMsg->hWin, GUI_ID_BUTTON1);
-		WM_ShowWindow (Confim_BUTTON[1]);
-    BUTTON_SetText(Confim_BUTTON[1], "取消");
-	  BUTTON_SetFont(Confim_BUTTON[1], &GUI_Font30);
-		BUTTON_SetBkColor(Confim_BUTTON[1],BUTTON_BI_UNPRESSED,pSkin->bt_bkColor);
-		BUTTON_SetTextColor(Confim_BUTTON[1],BUTTON_BI_UNPRESSED,pSkin->bt_txColor);
-		WM_SetCallback(Confim_BUTTON[1], &myButton);
+      BUTTON_CreateEx (60,110,80,40,thisFrame, WM_CF_HASTRANS  ,0,GUI_ID_BUTTON0);
+      Confim_BUTTON[0] = WM_GetDialogItem(pMsg->hWin, GUI_ID_BUTTON0);
+      WM_ShowWindow (Confim_BUTTON[0]);
+      BUTTON_SetText(Confim_BUTTON[0], "确定");
+      BUTTON_SetFont(Confim_BUTTON[0], &GUI_Font30);
+      BUTTON_SetBkColor(Confim_BUTTON[0],BUTTON_BI_UNPRESSED,pSkin->bt_bkColor);
+      BUTTON_SetTextColor(Confim_BUTTON[0],BUTTON_BI_UNPRESSED,pSkin->bt_txColor);
+      WM_SetCallback(Confim_BUTTON[0], &myButton);
+        //
+        // Initialization of 'bt_Cancle'
+        //
+      BUTTON_CreateEx(260,  110,   80,  40,thisFrame,WM_CF_HASTRANS,0,GUI_ID_BUTTON1);
+      Confim_BUTTON[1] = WM_GetDialogItem(pMsg->hWin, GUI_ID_BUTTON1);
+      WM_ShowWindow (Confim_BUTTON[1]);
+      BUTTON_SetText(Confim_BUTTON[1], "取消");
+      BUTTON_SetFont(Confim_BUTTON[1], &GUI_Font30);
+      BUTTON_SetBkColor(Confim_BUTTON[1],BUTTON_BI_UNPRESSED,pSkin->bt_bkColor);
+      BUTTON_SetTextColor(Confim_BUTTON[1],BUTTON_BI_UNPRESSED,pSkin->bt_txColor);
+      WM_SetCallback(Confim_BUTTON[1], &myButton);
     //
     // Initialization of 'Text'
     //
-		TEXT_CreateEx (0,   40,  400, 40, thisFrame,WM_CF_SHOW,0,ID_TEXT_CONTENT,NULL);
-     dlgTextContent = WM_GetDialogItem(pMsg->hWin, ID_TEXT_CONTENT);
-		 TEXT_SetTextColor (dlgTextContent,pSkin->text);
-		 TEXT_SetTextAlign(dlgTextContent,TEXT_CF_HCENTER);
+		    TEXT_CreateEx (0,   40,  400, 40, thisFrame,WM_CF_SHOW,0,ID_TEXT_CONTENT,NULL);
+      dlgTextContent = WM_GetDialogItem(pMsg->hWin, ID_TEXT_CONTENT);
+		    TEXT_SetTextColor (dlgTextContent,pSkin->text);
+		    TEXT_SetTextAlign(dlgTextContent,TEXT_CF_HCENTER);
      //TEXT_SetText(dlgTextContent, "");
-     TEXT_SetFont(dlgTextContent, &GUI_Font30);
+      TEXT_SetFont(dlgTextContent, &GUI_Font30);
     // USER START (Optionally insert additional code for further widget initialization)
     // USER END
-    break;
+      break;
 	
 	case WM_KEY:
 
 		pInfo  = (WM_KEY_INFO*)pMsg->Data.p;
 	
 	  switch(pInfo->Key)
-		{
-			case GUI_KEY_LEFT:
-			case GUI_KEY_RIGHT: 
-				
-				if(WM_HasFocus(WM_GetDialogItem(thisFrame,GUI_ID_BUTTON0)))
-    {
-				  	WM_SetFocus (WM_GetDialogItem(thisFrame,GUI_ID_BUTTON1));
-     }
-				else
-				{
-					  WM_SetFocus (WM_GetDialogItem(thisFrame,GUI_ID_BUTTON0));
-				}
-			//WM_SetFocusOnNextChild (thisFrame);
-			
-			//GUI_StoreKeyMsg(GUI_KEY_TAB,1);
-			break;
-//   case GUI_KEY_ENTER:
-//INFO("case enter");   
-//        break;
-			
-			default:
-				break;
+		 {
+		   	case GUI_KEY_LEFT:
+		   	case GUI_KEY_RIGHT: 				
+           if(WM_HasFocus(WM_GetDialogItem(thisFrame,GUI_ID_BUTTON0)))
+           {
+              WM_SetFocus (WM_GetDialogItem(thisFrame,GUI_ID_BUTTON1));
+            }
+           else
+           {
+              WM_SetFocus (WM_GetDialogItem(thisFrame,GUI_ID_BUTTON0));
+           }
+			        break;	
+       
+      case GUI_KEY_BACKSPACE:
+           {
+              myMsg.hWin  = myMsg.hWinSrc;
+              myMsg.hWinSrc  = pMsg->hWin;
+              myMsg.MsgId    = USER_MSG_REPLY;
+              myMsg.Data.v   = REPLY_CANCEL;
+              WM_SendMessage(myMsg.hWin, &myMsg);  
+              WM_BringToBottom(confirmWin);
+           }
+           break;  
+           
+			   default:
+			       	break;
 		}
 		break;
 		
   case WM_NOTIFY_PARENT:
-    Id    = WM_GetId(pMsg->hWinSrc);    // Id of widget
-    NCode = pMsg->Data.v;               // Notification code
-    switch (NCode) {
-    case GUI_KEY_BACKSPACE:    
-         break;
-    case WM_NOTIFICATION_RELEASED:      // React only if released
-      switch (Id) {
-      case GUI_ID_BUTTON0: 
-           myMsg.hWin     = myMsg.hWinSrc;
-           myMsg.hWinSrc  = pMsg->hWin;
-           myMsg.MsgId    = USER_MSG_REPLY;
-           myMsg.Data.v   = REPLY_OK;
-           WM_SendMessage(myMsg.hWin, &myMsg);
-           break;
-      case GUI_ID_BUTTON1:
-           WM_SetFocusOnPrevChild(confirmWin);
-           
-           myMsg.hWin     = myMsg.hWinSrc;
-           myMsg.hWinSrc  = pMsg->hWin;
-           myMsg.MsgId    = USER_MSG_REPLY;
-           myMsg.Data.v   = REPLY_CANCEL;
-           WM_SendMessage(myMsg.hWin, &myMsg);
-           break;
-      }
-      WM_BringToBottom(pMsg->hWin);
-      break;
+       Id    = WM_GetId(pMsg->hWinSrc);    // Id of widget
+       NCode = pMsg->Data.v;               // Notification code
+       switch (NCode) 
+       {
+
+          case WM_NOTIFICATION_RELEASED:      // React only if released
+               switch (Id) 
+               {
+                  case GUI_ID_BUTTON0: 
+                       myMsg.hWin     = myMsg.hWinSrc;
+                       myMsg.hWinSrc  = pMsg->hWin;
+                       myMsg.MsgId    = USER_MSG_REPLY;
+                       myMsg.Data.v   = REPLY_OK;
+                       WM_SendMessage(myMsg.hWin, &myMsg);
+                       break;
+                       
+                  case GUI_ID_BUTTON1:
+                       WM_SetFocusOnPrevChild(confirmWin);
+                       
+                       myMsg.hWin     = myMsg.hWinSrc;
+                       myMsg.hWinSrc  = pMsg->hWin;
+                       myMsg.MsgId    = USER_MSG_REPLY;
+                       myMsg.Data.v   = REPLY_CANCEL;
+                       WM_SendMessage(myMsg.hWin, &myMsg);
+                       break;
+               }
+               WM_BringToBottom(confirmWin);
+               break;
     }
     break;
   // USER START (Optionally insert additional message handling)
@@ -252,27 +250,25 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
       {
          case CANCEL_MONITED:         
               TEXT_SetText(dlgTextContent, "确认取消监控该船舶？");
-					
               break;
           
          case STORE_SETTING:       
               TEXT_SetText(dlgTextContent, "确认保存监控设置项？");    
-					
               break;
          case ADD_MONITED:             
               TEXT_SetText(dlgTextContent, "确认添加网位仪监控列表？");
-						
               break;
          case SYS_SETTING:
               TEXT_SetText(dlgTextContent, "确认保存设置内容？");
-							
-         break;
+							       break;
+         case SYS_REVIVE:
+              TEXT_SetText(dlgTextContent, "确认恢复出厂设置？");
+              break;
          
          default:       
               break;
       }
       break;
-   break;
 //   case USER_MSG_CHOOSE:
 //        
 //        break;
@@ -311,50 +307,35 @@ WM_HWIN confirmWinCreate(void) {
 
 static void myButton (WM_MESSAGE *pMsg)
 {
-	const WM_KEY_INFO *pInfo;
-	WM_HWIN thisFrame  = pMsg->hWin;
-	
-	int Id = 0;
-	int index = 0;
-	int NCode;
-	WM_MESSAGE myMsg;
-	WM_HWIN thisButton  = pMsg->hWin; 
+ 	int index = 0;
 
-	switch(pMsg->MsgId)   
-   { 
-// 		 
-// 		 case WM_PAINT:
-// 			 
-// 				GUI_SetBkColor(GUI_RED);
-// 				GUI_Clear();
-// 		 break;
-		 
-      case WM_SET_FOCUS:
-           index  = WM_GetId(pMsg->hWin) - GUI_ID_BUTTON0;
+
+
+	 switch(pMsg->MsgId)   
+  { 	 
+     case WM_SET_FOCUS:
+          index  = WM_GetId(pMsg->hWin) - GUI_ID_BUTTON0;
            
-           if(pMsg->Data.v == 0)
-           {
-              BUTTON_SetBkColor(Confim_BUTTON[index], BUTTON_CI_UNPRESSED, pSkin->bt_bkColor);
-              //TEXT_SetBkColor(Texts[index], pSkin->MntSetWin_bkNOFOCUS);
-           }
-           else
-           {
-             BUTTON_SetBkColor(Confim_BUTTON[index], BUTTON_CI_UNPRESSED, pSkin->bt_bkFocus);
-             //TEXT_SetBkColor(Texts[index], GUI_DARKMAGENTA); 
-           }
-           
-           BUTTON_Callback(pMsg);
-           break;
-		
-  // USER START (Optionally insert additional message handling)
-//   case USER_MSG_CHOOSE:
-//        
-//        break;
-  // USER END
+          if(pMsg->Data.v == 0)
+          {
+             BUTTON_SetBkColor(Confim_BUTTON[index], BUTTON_CI_UNPRESSED, pSkin->bt_bkColor);
+             //TEXT_SetBkColor(Texts[index], pSkin->MntSetWin_bkNOFOCUS);
+          }
+          else
+          {
+            BUTTON_SetBkColor(Confim_BUTTON[index], BUTTON_CI_UNPRESSED, pSkin->bt_bkFocus);
+            //TEXT_SetBkColor(Texts[index], GUI_DARKMAGENTA); 
+          }
+          
+          BUTTON_Callback(pMsg);
+          break;
+
 			default:
-				BUTTON_Callback(pMsg);
-			break;
+			      	BUTTON_Callback(pMsg);
+			       break;
 	}
 }
 
 /*************************** End of file ****************************/
+
+

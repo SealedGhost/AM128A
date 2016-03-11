@@ -1,3 +1,5 @@
+#include "Config.h"
+
 typedef struct message_18 message_18;
 typedef struct message_24 message_24;
 typedef struct message_24_partA message_24_partA;
@@ -64,10 +66,18 @@ struct dimension_of_ship{
 // };
 
 struct type_of_ship{
-	int message_id;
+	 int message_id;
+  
+
+  
 //	int repeat_indicator;
-	unsigned long user_id;
- unsigned char vender_id[7];
+	 unsigned long user_id;
+  unsigned char vender_id[7];
+  
+    #ifdef P_AM128A
+     unsigned char type_of_ship_and_cargo_type;
+  #endif
 //int part_number;
-//int type_of_ship_and_cargo_type;
+
+
 };

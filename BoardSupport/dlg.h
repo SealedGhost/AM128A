@@ -21,3 +21,4 @@ WM_HWIN sub3WinCreate(void);
 WM_HWIN _sub3WinCreate(void);
 
 #endif
+

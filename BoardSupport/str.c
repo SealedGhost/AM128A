@@ -1,7 +1,11 @@
 #include "str.h"
 #include <stdio.h>
+#include <string.h>
 
-char strBuf[20]  = "?????.???";
+char debugText[30];
+char *pDebugString  = debugText;
+
+char strBuf[30]  = "?????.???";
 char* pStrBuf = strBuf;
 
 
@@ -20,14 +24,27 @@ void disttostr( char * str, int num)
 
 long strtoi(const char*str)
 {
-	int val = 0;
-	short i = 0;
+	long val = 0;
+	int i = 0;
+ int len  = 0;
+ 
 	
-	while('\0' != str[i])
-	{
-		val  = val*10+str[i]-'0';
-		i++;
-	}
+ if(str != NULL)
+ {
+ 
+    len  = strlen(str); 
+    for(i=0; i<len; i++)
+    {
+       if(str[i]>='0'  &&  str[i]<='9')
+       {
+          val  = val*10 + str[i]-'0';
+       }
+       else if(str[i] != ' ')
+       {     
+          return 0;
+       }
+    }
+ }
 	return val;
 }
 
@@ -61,7 +78,7 @@ void lltostr(long l_o_l,char *str)
     minute_dec = (l_o_l%(60000))-minute_int*1000;
     
    //	ttoi(degree,tmp);
-    sprintf(str,"%03d",degree);
+    sprintf(str,"%3d",degree);
     str[3]  = 194;
     str[4]  = 176;
     sprintf(str+5,"%02d",minute_int);
@@ -91,3 +108,58 @@ char * ttoi(long num, char * str)
     }
     return str;
 }
+
+
+void str_trim(char * pszSrc, int nMaxLen)
+{
+   int i  = 0;
+  
+   for(; i< nMaxLen-1; i++)
+   {
+      if(pszSrc[i] == 0)
+         break;
+   }
+      
+   for(; i; i--)
+   {
+      if(pszSrc[i] == 0 || pszSrc[i] == 32)
+      {
+         pszSrc[i]  = 0;      
+      }
+      else
+      {
+         return;
+      }
+   }
+   return;   
+}
+
+
+/** @brief      判断两个相同类型结构体是否相等
+ *
+ *  @dscrp 
+ *  @para [in]  两个结构体的起始地址和结构体的大小
+ *  @para [out] 如果有地址为NULL，或者不相等，返回FALSE。否则返回TRUE
+ */
+Bool Mem_isEqual(void* _pSrc, void* _pDst, unsigned int nSize)
+{
+   unsigned char* pSrc  = (unsigned char*)_pSrc;
+   unsigned char* pDst  = (unsigned char*)_pDst;
+   
+   if(pStrBuf == NULL  ||  pDst == NULL)
+      return FALSE;
+   
+   while(nSize)
+   {
+      if(pSrc[nSize-1] != pDst[nSize-1])
+      {
+         return FALSE;
+      }
+      else
+      {
+         nSize--;
+      }
+   }
+   return TRUE;
+}
+

@@ -1,10 +1,37 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-#define MOTHERShIP_LA    1927265
-#define MOTHERShIP_LG    7128663
+#define P_AM128A
+
+//#define P_AM128B
 
 
+#define MOTHERSHIP_LA    1927265
+#define MOTHERSHIP_LG    7128663
+
+
+
+//#define DEBUG_LEVEL  0
+//#define DEBUG_LEVEL DEBUG_LEVEL_ERROR
+//#define DEBUG_LEVEL DEBUG_LEVEL_WARNING
+//#define DEBUG_LEVEL DEBUG_LEVEL_WATCH
+#define DEBUG_LEVEL DEBUG_LEVEL_TAG
+
+#ifdef DEBUG_LEVEL_TAR
+  #define DEBUG_LEVEL_WATCH
+#endif
+
+#ifdef DEBUG_LEVEL_WATCH
+  #define DEBUG_LEVL_WARNING
+#endif
+
+#ifdef DEBUG_LEVEL_WARNING
+  #define DEBUG_LEVEL_ERROR
+#endif
+
+
+
+#define VERSION  "V1.0.0"
 
 /********************************************************************
  *
@@ -93,10 +120,12 @@
  */
 #define DSP_BOAT_COLOR   GUI_BLACK
 
-#define BGL_BOAT_COLOR   GUI_GREEN
+#define BGL_BOAT_COLOR   GUI_RED
 #define BGL_CIRCLE_R     15
 
-#define DRG_BOAT_COLOR   GUI_RED
+#define ADB_BOAT_COLOR  0x00cf9b18
+
+#define DRG_BOAT_COLOR   GUI_GREEN
 #define DRG_CIRCLE_R     20
 #define DRG_PENSIZE      4
 
@@ -114,7 +143,7 @@
 #define TIMESTAMP           60
 
 #define MAP_REFRESH_SLOT    500
-#define AUTO_ADAPTER_CNT    20  
+#define CURSOR_HIDE_CNT     200  
 
 
 
@@ -124,9 +153,9 @@
  */
 #define MSG_QUEUE_TABNUM    20
 #define BOAT_NUM_MAX        500
-#define MNT_NUM_MAX         20
-#define INVD_NUM_MAX        100
-
+#define MNT_NUM_MAX         50
+#define INVD_NUM_MAX        10
+#define BULY_NUM_MAX         5
 
 /********************************************************************
  *
@@ -138,11 +167,6 @@
 #define MNT_PAGE_ID         (uint8_t)2       
 
 
-/********************************************************************
- *
- *              code switch config
- */
-#define CODE_CHECK 
 
 /********************************************************************
  *
@@ -168,4 +192,28 @@
 #define CURSOR_SPEED   5
 
 
+/********************************************************************
+ *
+ *               IC config.
+ */
+//#define SND_IC_XT
+
+
+/********************************************************************
+ *
+ *               Boat type config.
+ */
+ #define TYPE_HSD     0x01
+ #define TYPE_BULLY   0x02
+ 
+ #define NATION_PRK  0x01   /// North korea
+ #define NATION_KOR  0x20   /// Korea
+ #define NATION_JPN  0x30   /// Japan
+ #define NATION_CTB  0x40   /// Taiwan
+ #define NATION_VIE  0x50   /// Vietnam
+ #define NATION_INA  0x60   /// Indonesia
+
 #endif
+
+
+

@@ -97,16 +97,9 @@ static int btIndex  = 0;
 *       _cbDialog
 */
 static void _cbDialog(WM_MESSAGE * pMsg) {
-	const WM_KEY_INFO * pInfo;
-  int     NCode;
-  int     Id;
  	char     i;
   
   switch (pMsg->MsgId) { 
-    case USER_MSG_BRING:
-         HSD_BUTTON_SetBkColor(hButtons[pMsg->Data.v], pSkin->btBkFocus);
-INFO("Case BRING");         
-         break; 
      
     case USER_MSG_DFULT_CNT:
          HSD_BUTTON_SetValue(hButtons[1], pMsg->Data.v);
@@ -168,7 +161,7 @@ INFO("case msg skin");
 /**
  *  emWin Bug
  */  
-  WM_SetFocus(hButtons[1]);
+//  WM_SetFocus(hButtons[1]);
   
     WINDOW_SetBkColor(pMsg->hWin,pSkin->bkColor);  
 //    TEXT_SetTextColor(WM_GetDialogItem(pMsg->hWin, ID_TEXT_0), pSkin->Menu_Label);
@@ -187,77 +180,7 @@ INFO("case msg skin");
        WM_SetCallback(hButtons[i], &myButtonListener);
 		  }
     break;
-  case WM_NOTIFY_PARENT:
-		
-    Id    = WM_GetId(pMsg->hWinSrc);
-    NCode = pMsg->Data.v;
-    switch(Id) {
-    case ID_BUTTON_0: // Notifications sent by 'bt_0'
-				
-      switch(NCode) {     
 
-      case WM_NOTIFICATION_CLICKED:
-			
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-				
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_BUTTON_1: // Notifications sent by 'bt_1'
-		
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_BUTTON_2: // Notifications sent by 'bt_2'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-    case ID_BUTTON_3: // Notifications sent by 'bt_3'
-      switch(NCode) {
-      case WM_NOTIFICATION_CLICKED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      case WM_NOTIFICATION_RELEASED:
-        // USER START (Optionally insert code for reacting on notification message)
-        // USER END
-        break;
-      // USER START (Optionally insert additional code for further notification handling)
-      // USER END
-      }
-      break;
-
-    }
-    break;
-  // USER START (Optionally insert additional message handling)
-  // USER END
   default:
     WM_DefaultProc(pMsg);
     break;
@@ -290,91 +213,94 @@ static void myButtonListener(WM_MESSAGE * pMsg)
  static int selIndex  = 2;
 	const WM_KEY_INFO * pInfo;
 	WM_HWIN thisButton  = pMsg->hWin;
-	WM_HWIN handle;
 	
 	
 	switch(pMsg->MsgId)
 	{
  
- case WM_SET_FOCUS:
-      btIndex  = WM_GetId(pMsg->hWin) - ID_BUTTON_0;
-      if(btIndex < 4  &&  btIndex >= 0)
-      {
-         if(pMsg->Data.v)
-         {      
-            selIndex  = btIndex;   
-            HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkFocus);    
-            WM_BringToTop(subWins[btIndex]);
-            if(btIndex < 2)
-            {
-               if(btIndex)
+    case WM_SET_FOCUS:
+         btIndex  = WM_GetId(pMsg->hWin) - ID_BUTTON_0;
+         if(btIndex < 4  &&  btIndex >= 0)
+         {
+            if(pMsg->Data.v)
+            {      
+               selIndex  = btIndex;   
+               
+               /**Background color can't change with focus in HSD_BUTTON_Callbak  */
+               HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkFocus);    
+               WM_BringToTop(subWins[btIndex]);
+               if(btIndex == 1)
                {
                   WM_BringToTop(mntSettingWin);
+                  WM_SendMessageNoPara(subWins[btIndex], USER_MSG_LV_UPDATE);
                }
-               WM_SendMessageNoPara(subWins[btIndex], USER_MSG_BRING);
-            }
-         }
-         else
-         {      
-            if(selIndex == btIndex)
-            {
-               HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkSel);
-            }
-            else
-            {
-               HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkColor);
-            }
-         }
+             }
+             else
+             {      
+                if(selIndex == btIndex)
+                {
+                   HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkSel);
+                }
+                else
+                {
+                   HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkColor);
+                }
+             }
          
-         HSD_BUTTON_Callback(pMsg);
-      }
-      else
-      {
-INFO("focus err!");      
-      }
-      break;
+             HSD_BUTTON_Callback(pMsg);
+          }
+          else
+          {
+             INFO("focus err!");      
+          }
+           break;
 
-		case WM_KEY:
-			pInfo  = (WM_KEY_INFO*)pMsg->Data.p;
-		  switch(pInfo->Key)
-			{
-				case GUI_KEY_DOWN:  
-         selIndex = -1;  
-         HSD_BUTTON_Callback(pMsg);
-					    break;
-				
-				case GUI_KEY_UP:
-         selIndex  = -1;
-         HSD_BUTTON_Callback(pMsg);
-		     		break;
-				
-				case GUI_KEY_RIGHT: 
-         HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkSel);
-         WM_SetFocus(subWins[btIndex]); 
-				     break;
-         
-				case GUI_KEY_MENU:       
-    case GUI_KEY_BACKSPACE:
-         WM_BringToBottom(menuWin);
-         WM_HideWindow(subWins[0]);
-         WM_HideWindow(subWins[1]);
-         WM_HideWindow(subWins[2]);
-         WM_HideWindow(subWins[3]);
-         WM_HideWindow(mntSettingWin);     
-         HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkColor);    
-         WM_SetFocus(mapWin);
-         GUI_CURSOR_Show();   
-		    			break;
-				
-     default:
-         HSD_BUTTON_Callback(pMsg);
-         break;
-			}
-			break;
+	   	case WM_KEY:
+          pInfo  = (WM_KEY_INFO*)pMsg->Data.p;
+          switch(pInfo->Key)
+          {
+             case GUI_KEY_PWM_INC:       
+               WM_SendMessageNoPara(subWins[3], USER_MSG_DIM);
+               break;
+             case GUI_KEY_DOWN:  
+                  selIndex = -1;  
+                  HSD_BUTTON_Callback(pMsg);
+                  break;
+             
+             case GUI_KEY_UP:
+                  selIndex  = -1;
+                  HSD_BUTTON_Callback(pMsg);
+                  break;
+             
+             case GUI_KEY_RIGHT: 
+                  HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkSel);
+                  WM_SetFocus(subWins[btIndex]); 
+                  break;
+                  
+             case GUI_KEY_MENU:       
+             case GUI_KEY_BACKSPACE:
+                  selIndex  = -1;
+                  WM_BringToBottom(menuWin);
+                  WM_HideWindow(subWins[0]);
+                  WM_HideWindow(subWins[1]);
+                  WM_HideWindow(subWins[2]);
+                  WM_HideWindow(subWins[3]);
+                  WM_HideWindow(mntSettingWin);     
+                  HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkColor);   
+                  WM_SetFocus(hButtons[0]);         
+                  WM_SetFocus(mapWin);
+                  GUI_CURSOR_Show();   
+                  break;
+             
+              default:
+                  HSD_BUTTON_Callback(pMsg);
+                  break;
+          }
+		       	break;
    
-				default:
-				  	HSD_BUTTON_Callback(pMsg);
-			   	break;
+				 default:
+				     	HSD_BUTTON_Callback(pMsg);
+			      	break;
 	}
 }
 

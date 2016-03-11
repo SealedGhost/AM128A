@@ -36,7 +36,7 @@ __IO uint8_t UART2_RX[50];//
 
 void DMA_IRQHandler (void)
 {
-	uint8_t *pt,*pt0,index,err;	
+	uint8_t index;	
 
 	if (GPDMA_IntGetStatus(GPDMA_STAT_INT, 0))
 	{
@@ -47,7 +47,6 @@ void DMA_IRQHandler (void)
 
        if(DMADest_Buffer[0] == '!'  ||  DMADest_Buffer[0] == '$')
        {
-          xlCnt=0;
           for(index=0;index<50;index++)	
           {
             Partition[myCnt][index]=DMADest_Buffer[index];
@@ -73,7 +72,7 @@ void DMA_IRQHandler (void)
 
           GPDMA_ClearIntPending (GPDMA_STATCLR_INTERR, 0);
           SPI1_DMA_Init();
-//          printf("dma error\n\r");
+          printf("dma error\n\r");
        }       
 //printf("myCnt:%d",myCnt);       
      
