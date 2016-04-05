@@ -198,6 +198,16 @@ int update_18(BERTH * pBerth, struct message_18 * p_msg)
    
    pBerth->Boat.time_cnt  = TIMESTAMP;
 
+#ifdef P_AM128A
+   if(pBerth->Boat.category == 0  &&  p_msg->SOG >= HIGH_SPEED)
+   {
+      unsigned char nation  = BULY_parseNation(pBerth->Boat.user_id);
+      pBerth->Boat.category  = nation | TYPE_BULLY;
+INFO("find high speed boat :0x%x", pBerth->Boat.category);      
+      BULY_add(pBerth);
+   }
+#endif
+   
    tmp  = pBerth;
 
    /// Distance did not change ,we don't need to do anything. 
@@ -366,6 +376,17 @@ INFO("alloc berth failed!");
                          mothership.latitude, mothership.longitude);
    buf->Boat.dist  = Dist;
    buf->Boat.time_cnt  = TIMESTAMP;
+   
+#ifdef P_AM128A   
+   if(buf->Boat.category == 0  &&  p_msg->SOG >= HIGH_SPEED)
+   {
+      unsigned char nation  = BULY_parseNation(buf->Boat.user_id);
+      buf->Boat.category  = nation |  TYPE_BULLY;
+INFO("find high speed boat :0x%x", buf->Boat.category);   
+      BULY_add(buf);   
+   }
+#endif   
+
 //printf("alloc:%d--%09ld\n",buf-Berthes,buf->Boat.user_id);   
    if(pHeader == NULL)
    {
@@ -517,21 +538,7 @@ int update_24B(BERTH * pBerth, type_of_ship * p_msg)
 {
    pBerth->Boat.time_cnt  = TIMESTAMP;
    
-   #ifdef P_AM128A
-      if( (pBerth->Boat.category&0x0f) != TYPE_BULLY  &&  p_msg->type_of_ship_and_cargo_type == TYPE_BULLY)
-      {
-         unsigned char nation;
-         
-INFO("update bully");      
-         nation  = BULY_parseNation(p_msg->user_id);
-         if(nation)
-         {
-            pBerth->Boat.category  = nation | TYPE_BULLY;   
-            BULY_add(pBerth);
-         }
-         return 1;
-      }
-   #endif
+
 
    if(    p_msg->vender_id[0] == 8
        && p_msg->vender_id[1] == 19
@@ -539,8 +546,32 @@ INFO("update bully");
    {
    
       pBerth->Boat.category = TYPE_HSD;
+//INFO("find hsd :%09ld", pBerth->Boat.user_id);      
       return 0;
    }
+   
+#ifdef P_AM128A
+   else
+   {
+      if( p_msg->type_of_ship_and_cargo_type == 55  &&  (pBerth->Boat.category&0xf0) == 0 )
+//      if( (pBerth->Boat.category&0x0f) != TYPE_BULLY  &&  p_msg->type_of_ship_and_cargo_type == 55)
+      {
+         unsigned char nation;    
+         nation  = BULY_parseNation(p_msg->user_id);       
+         if(nation)
+         {
+            pBerth->Boat.category  = nation | TYPE_BULLY;              
+            BULY_add(pBerth);
+INFO("find bully :%09ld--0x%0x",pBerth->Boat.user_id,pBerth->Boat.category);            
+         }
+         else
+         {
+INFO("find bully without nation");
+         }         
+         return 1;
+      }
+   }
+#endif
    
    return 1;
 }
@@ -561,30 +592,37 @@ INFO("alloc berth failed!");
    }
    
    buf->Boat.user_id  = p_msg->user_id;
-//   buf->Boat.dist  = 999999;
    buf->Boat.time_cnt   = TIMESTAMP;
    
-   #ifdef P_AM128A
-      if(p_msg->type_of_ship_and_cargo_type == TYPE_BULLY)
-      {
-         unsigned char nation;
-INFO("find bully");
-         nation  = BULY_parseNation(p_msg->user_id);
-         if(nation)
-         {
-            buf->Boat.category  = nation | TYPE_BULLY;
-            BULY_add(buf);
-         }
-      }
-
-   #else
-   
+ 
    if(    p_msg->vender_id[0] == 8
        && p_msg->vender_id[1] == 19
        && p_msg->vender_id[2] == 4)
    {
-      buf->Boat.type  = TYPE_HSD;
+      buf->Boat.category   = TYPE_HSD;
+//INFO("find hsd:%09ld", buf->Boat.user_id);      
    }
+   
+#ifdef P_AM128A
+   else 
+   {
+      if(p_msg->type_of_ship_and_cargo_type == 55)
+      {
+         unsigned char nation;
+         nation  = BULY_parseNation(p_msg->user_id);          
+         if(nation)
+         {
+            buf->Boat.category  = nation | TYPE_BULLY;
+            BULY_add(buf);
+INFO("find bully: %09ld--0x%0x", buf->Boat.user_id, buf->Boat.category);            
+         }
+         else
+         {
+INFO("find bully without nation");         
+         }
+      }
+   }
+#else   
    
    #endif
 //   buf->Boat.isHSD  = TRUE;
@@ -646,10 +684,14 @@ void updateTimeStamp()
          {
             MNT_snapOnMiss(pCur);
          }
+         
+#ifdef P_AM128A         
          else if( (pCur->Boat.category&0x0f) == TYPE_BULLY)
          {
             BULY_delete(pCur);
+INFO("delete bully");            
          }
+#endif         
          /// Delete at header
          if(pCur == pHeader)
          {

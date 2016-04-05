@@ -9,6 +9,7 @@
 #include "28.h"
 #include "dlg.h"
 #include "sound.h"
+#include "Config.h"
 
 extern unsigned char isSub0Inited;
 extern unsigned char isSub2Inited;
@@ -36,7 +37,11 @@ void MainTask(void)
    /// Welcome logo 
    GUI_SetColor (0xb58400);
    GUI_SetFont (&GUI_Font120);
+#ifdef P_AM128A
+   GUI_DispStringAt("AM-128A", 195,100);   
+#else
    GUI_DispStringAt("AM-128B",195,100);
+#endif   
    GUI_PNG_Draw (&_accover_colo_1,sizeof(_accover_colo_1),300,LCD_GetYSize()/2);  
    
    
@@ -53,7 +58,11 @@ void MainTask(void)
    SND_SetVol(SysConf.Vol);
    GUI_Delay(200);
    SND_Play(SND_ID_WLCM);
-
+#ifdef P_AM128A
+INFO("Product :AM128A");
+#else
+INFO("Product :AM128B");
+#endif
 
 
    GUI_Clear();
@@ -78,7 +87,10 @@ void MainTask(void)
    subWins[0]  = sub0WinCreate(); 
    subWins[1]  = sub1WinCreate();
    subWins[2]  = sub2WinCreate();
-   subWins[3]  = _sub3WinCreate();
+   subWins[3]  = sub3WinCreate();
+#ifdef P_AM128A
+   subWins[4]  = sub4WinCreate();
+#endif   
    menuWin  = menuWinCreate();
    mapWin = mapWinCreate();
 

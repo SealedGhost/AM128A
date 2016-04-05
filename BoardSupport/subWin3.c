@@ -285,7 +285,7 @@ static void  _cbDialog(WM_MESSAGE * pMsg)
 }
 
 
-WM_HWIN _sub3WinCreate()
+WM_HWIN sub3WinCreate()
 {
    WM_HWIN hWin;
    hWin  = GUI_CreateDialogBox(_aDialogCreate, GUI_COUNTOF(_aDialogCreate), _cbDialog, WM_HBKWIN, 0, 0);

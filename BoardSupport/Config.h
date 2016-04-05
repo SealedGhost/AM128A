@@ -3,7 +3,6 @@
 
 #define P_AM128A
 
-//#define P_AM128B
 
 
 #define MOTHERSHIP_LA    1927265
@@ -172,7 +171,7 @@
  *
  *               printf config.
  */
-#define __INFO_ENABLE 
+//#define __INFO_ENABLE 
 
 #ifndef __INFO_ENABLE
 
@@ -206,12 +205,25 @@
  #define TYPE_HSD     0x01
  #define TYPE_BULLY   0x02
  
- #define NATION_PRK  0x01   /// North korea
- #define NATION_KOR  0x20   /// Korea
- #define NATION_JPN  0x30   /// Japan
- #define NATION_CTB  0x40   /// Taiwan
- #define NATION_VIE  0x50   /// Vietnam
- #define NATION_INA  0x60   /// Indonesia
+ 
+ /********************************************************************
+ *
+ *               Nationality config.
+ */
+ #define NATION_NUM   6
+ 
+#define NATION_CTB   0x10  /// Chinese Taiwan
+#define NATION_JPN   0x20  /// Japan
+#define NATION_KOR   0x30  /// Korea
+#define NATION_PRK   0x40  /// People's Republic of Korea
+#define NATION_INA   0x50  /// 
+#define NATION_VIE   0x60  /// 
+ 
+ /********************************************************************
+*
+*               High speed value.
+*/
+ #define HIGH_SPEED  120
 
 #endif
 

@@ -13,6 +13,7 @@
 #include "GUI.h"
 #include "uart.h"
 #include "lpc177x_8x_eeprom.h"
+#include "Config.h"
 
 #define OFFSETOF(x) ((uint8_t*)x-(uint8_t*)MNT_Berthes)
 
@@ -238,6 +239,9 @@ struct _CONF_SYS
 	 char                 Brt;          /// Light config.
   UNITS                Unit;        /// Unit  config.
   BOAT_SHAPES          Shape;       /// Shape config.
+#ifdef P_AM128A
+  unsigned char        nations;
+#endif  
 };
 
 

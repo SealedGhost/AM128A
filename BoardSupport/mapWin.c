@@ -9,6 +9,7 @@
 #include "drawThings.h"
 #include "30.h"
 #include "snap.h"
+#include "bully.h"
 
 extern GUI_CONST_STORAGE GUI_BITMAP bmgg;
 
@@ -129,8 +130,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
        break;
        
   case USER_MSG_SHAPE:
-       setShape(pMsg->Data.v);
-printf("setShape:%d\n\r", pMsg->Data.v);       
+       setShape(pMsg->Data.v);   
        break;
        
   case USER_MSG_REPLY:
@@ -277,7 +277,8 @@ printf("setShape:%d\n\r", pMsg->Data.v);
                 
                 pfnSetView  = setManualView;
                 
-                for(i=0; i<=MAX_GEAR; i++)
+                /// 这里循环的退出条件不能是 i <= MAX_GEAR,防止找不到合适的档位而出现数组越界。
+                for(i=0; i < MAX_GEAR; i++)
                 {
                    if(measuring_scale[i].minute/measuring_scale[i].pixel < AutoScale.minute/AutoScale.pixel)
                    {
@@ -301,8 +302,8 @@ printf("setShape:%d\n\r", pMsg->Data.v);
                 
                 pfnSetView  = setManualView;
               
-              
-                for(i=MAX_GEAR;i>=0; i--)
+                ///同理，这里不能写成 i >= 0。
+                for(i=MAX_GEAR;i > 0; i--)
                 {
                    if(measuring_scale[i].minute/measuring_scale[i].pixel > AutoScale.minute / AutoScale.pixel)
                    {
@@ -326,6 +327,9 @@ printf("setShape:%d\n\r", pMsg->Data.v);
              WM_ShowWindow(mntSettingWin);
              WM_ShowWindow(subWins[2]);
              WM_ShowWindow(subWins[3]);
+#ifdef P_AM128A
+WM_ShowWindow(subWins[4]);
+#endif             
              WM_SetFocus(menuWin);
              break;
         case GUI_KEY_PWM_INC:       
@@ -338,10 +342,22 @@ printf("setShape:%d\n\r", pMsg->Data.v);
              MNT_Enable();             
              break;
              
-        case GUI_KEY_CANCEL:       
-             isMntEnable  = DISABLE;
-             gIsMute  = TRUE;
+        case GUI_KEY_CANCEL:   
+             { 
+#ifdef P_AM128A
+               int i  = BULY_getValidNumber();
+INFO("valid number:%d", i);
+               if( i > 0){
+                  BULY_maskAllBerth();
+               }
+               else
+#endif         
+               {                   
+                  isMntEnable  = DISABLE;
+                  gIsMute  = TRUE;
+               }
 //             MNT_Disable();
+             }
              break;             
 			     }
 		      break;

@@ -31,6 +31,9 @@ void printSysConf(CONF_SYS * p)
    printf("Brightness      %d\n\r",p->Brt);
    printf("Unit            %s-%d\n\r",p->Unit?"nm":"km",p->Unit);
    printf("Shape           %s-%d\n\r",p->Shape?"Fish":"Boat",p->Shape);
+#ifdef P_AM128A   
+   printf("Nations         0x%x\n\r", p->nations);
+#endif   
 }
 
 
@@ -81,7 +84,7 @@ Bool sysLoad()
    Bool flag  = TRUE;
    
    
-   printf("\n\r Loading...\n\r"); 
+   printf("\n\rLoading...\n\r"); 
    
    EEPROM_Read(SYSCONF_ADDR%EEPROM_PAGE_SIZE, SYSCONF_ADDR/EEPROM_PAGE_SIZE,
                &SysConf, MODE_8_BIT, sizeof(CONF_SYS));
@@ -144,6 +147,7 @@ void sysStore()
 {
    EEPROM_Write(SYSCONF_ADDR%EEPROM_PAGE_SIZE, SYSCONF_ADDR/EEPROM_PAGE_SIZE,
                &SysConf, MODE_8_BIT, sizeof(CONF_SYS));        
+   printSysConf(&SysConf);               
 }
 
 
@@ -159,7 +163,7 @@ INFO("Error happened when system load.System will be configed with default value
    }
 
    PWM_SET(SysConf.Brt); 
-//   SND_SetVol(SysConf.Vol);
+   SND_Init();
 }
 
 
@@ -172,6 +176,9 @@ void sysRevive(void)
    SysConf.Vol   = DEFAULT_VOL;
    SysConf.Unit  = DEFAULT_UNIT;
    SysConf.Shape = DEFAULT_SHAPE;
+#ifdef P_AM128A   
+   SysConf.nations = 0;
+#endif   
    
    sysStore();
    for(i=0; i<MNT_NUM_MAX; i++)

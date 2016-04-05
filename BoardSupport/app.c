@@ -207,175 +207,265 @@ void Refresh_Task(void *p_arg)//任务Refresh_Task
 void Play_Task(void* p_arg) 
 {
    uint8_t  Nums[3];
-   uint8_t playList  = 1;
+   int restDlyTime  = 5000;
 
    MNT_BERTH* thisMntBerth  = NULL;
+#ifdef P_AM128A   
+   uint8_t playList  = 1;
    BULY_BERTH* thisBulyBerth  = NULL;
+#endif   
    
    while(1)
    {  
-      BULY_dump();
-      
-      if(playList == 1)
-      {
-         thisBulyBerth   = BULY_fetchNextPlayBerth();
-         if(thisBulyBerth)
-         {
-            
-            ///
-            playList  = 2;
-         }
-      }
-      else
-      {     
-         thisMntBerth  = MNT_fetchNextPlayBerth();
-         if(gIsMute == FALSE  &&  thisMntBerth)
-         {         
-            switch( (thisMntBerth->trgState&0xf0))
-            {
-               case (0x01<<7):
-                    if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
-                    {         
-                       SND_Play(thisMntBerth->nickName[0] - '0');
-                       OSTimeDlyHMSM(0, 0, 0, 600);
-                    }
-                    if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
-                    {
-                       SND_Play(thisMntBerth->nickName[1] - '0');
-                       OSTimeDlyHMSM(0, 0, 0, 800 );
-                       SND_Play(SND_ID_DEV);
-                       OSTimeDlyHMSM(0, 0, 1, 400);
-                    }            
-                    SND_Play(SND_ID_DSP);
-                    OSTimeDlyHMSM(0, 0, 1, 200);
-                    
-                    SND_ParseDist(thisMntBerth->snapDist, Nums);
-                    SND_Play(SND_ID_DST);
-                    OSTimeDlyHMSM(0, 0, 1, 600);
-                    
-                    if(Nums[0])                    
-                    {
-                       SND_Play(Nums[0]);
-                       OSTimeDlyHMSM(0, 0, 0, 800);
-                    }
-                    if(Nums[1])
-                    {
-                       SND_Play(Nums[1]);
-                       OSTimeDlyHMSM(0, 0, 0, 800);                      
-                    }
-                    if(Nums[2])
-                    {
-                       SND_Play(Nums[2]);
-                       OSTimeDlyHMSM(0, 0, 1, 0);                    
-                    }
-                    SND_Play(SND_ID_NM);
-                    
-                    break;
-                    
-               case (0x01<<6):
-                    if(thisMntBerth->mntBoat.mntSetting.DRG_Setting.isSndEnable)
-                    {
-                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
-                       {         
-                          SND_Play(thisMntBerth->nickName[0] - '0');
-                          OSTimeDlyHMSM(0, 0, 0, 600);
-                       }
-                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
-                       {
-                          SND_Play(thisMntBerth->nickName[1] - '0');
-                          OSTimeDlyHMSM(0, 0, 0, 800 );
-                          SND_Play(SND_ID_DEV);
-                          OSTimeDlyHMSM(0, 0, 1, 400);
-                       }                  
-                    
-                       SND_Play(SND_ID_DRG);
-                       OSTimeDlyHMSM(0, 0, 1, 0);
-                       if(thisMntBerth->pBerth->Boat.dist < 99999)
-                       {
-                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);                  
+      restDlyTime  = 5000;
+      if(gIsMute == FALSE){
+    
+#ifdef P_AM128A      
+         if(playList == 1){
+            thisBulyBerth   = BULY_fetchNextPlayBerth();
+            if(thisBulyBerth){            
+               BULY_dump();
+               if( (thisBulyBerth->pBoatLink->Boat.category & 0xf0) > 0){
+                  switch(thisBulyBerth->pBoatLink->Boat.category & 0xf0){
+                     case NATION_CTB:
+                          SND_Play(SND_ID_CTB);
+                          break;
+                     case NATION_JPN:
+                          SND_Play(SND_ID_JPN);
+                          break;
+                     case NATION_KOR:
+                          SND_Play(SND_ID_KOR);
+                          break;
+                     case NATION_PRK:
+                          SND_Play(SND_ID_PRK);
+                          break;
+                     case NATION_INA:
+                          SND_Play(SND_ID_INA);
+                          break;
+                     case NATION_VIE:
+                          SND_Play(SND_ID_VIE);
+                          break;
+                  }
+                  OSTimeDlyHMSM(0, 0, 2, 0);
+                  if(thisBulyBerth->pBoatLink->Boat.dist < 99999){
+                          SND_ParseDist(thisBulyBerth->pBoatLink->Boat.dist, Nums);
                           SND_Play(SND_ID_DST);
-                          OSTimeDlyHMSM(0, 0, 1, 400);
-                          
-                          if(Nums[0])                    
-                          {
+                          OSTimeDlyHMSM(0, 0, 1, 600);
+                                 
+                          if(Nums[0]){
                              SND_Play(Nums[0]);
                              OSTimeDlyHMSM(0, 0, 0, 800);
                           }
-                          if(Nums[1])
-                          {
+                          if(Nums[1]){
                              SND_Play(Nums[1]);
                              OSTimeDlyHMSM(0, 0, 0, 800);                      
                           }
-                          if(Nums[2])
-                          {
+                          if(Nums[2]){
                              SND_Play(Nums[2]);
                              OSTimeDlyHMSM(0, 0, 1, 0);                    
                           }
                           SND_Play(SND_ID_NM);
-                       } 
-                    }                 
-                    break;
-                    
-               case (0x01<<5):
-                    if(thisMntBerth->mntBoat.mntSetting.BGL_Setting.isSndEnable)
-                    {
-                    
-                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
-                       {         
-                          SND_Play(thisMntBerth->nickName[0] - '0');
-                          OSTimeDlyHMSM(0, 0, 0, 600);
-                       }
-                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
-                       {
-                          SND_Play(thisMntBerth->nickName[1] - '0');
-                          OSTimeDlyHMSM(0, 0, 0, 800 );
-                          SND_Play(SND_ID_DEV);
-                          OSTimeDlyHMSM(0, 0, 1, 400);
-                       }                  
-                       SND_Play(SND_ID_BGL);
-                       OSTimeDlyHMSM(0, 0, 1, 0);          
-
-                       if(thisMntBerth->pBerth->Boat.dist < 99999)
-                       {
-                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);
-                          SND_Play(SND_ID_DST);
-                          OSTimeDlyHMSM(0, 0, 1, 400);
+                          OSTimeDlyHMSM(0, 0, 0, 800);
                           
-                          if(Nums[0])                    
-                          {
+                          SND_Play(SND_ID_SIS);
+                          OSTimeDlyHMSM(0, 0, 1, 200);
+                          SND_ParseDist(thisBulyBerth->pBoatLink->Boat.SOG*100, Nums);
+                          
+                          if(Nums[0]){
                              SND_Play(Nums[0]);
                              OSTimeDlyHMSM(0, 0, 0, 800);
                           }
-                          if(Nums[1])
-                          {
+                          if(Nums[1]){
                              SND_Play(Nums[1]);
                              OSTimeDlyHMSM(0, 0, 0, 800);                      
                           }
-                          if(Nums[2])
-                          {
+                          if(Nums[2]){
                              SND_Play(Nums[2]);
                              OSTimeDlyHMSM(0, 0, 1, 0);                    
                           }
-                          SND_Play(SND_ID_NM);
-                       } 
-                    }                 
-                    break;
+                          SND_Play(SND_ID_KT);
+                          OSTimeDlyHMSM(0, 0, 0, 800);                          
+                          
+                  }   
+               }
+               else{
+                   SND_Play(SND_ID_HSB);
+INFO("hsb");                       
+                   OSTimeDlyHMSM(0, 0, 2, 0);
+                   SND_ParseDist(thisBulyBerth->pBoatLink->Boat.dist, Nums);
+                   SND_Play(SND_ID_DST );
+                   OSTimeDlyHMSM(0, 0, 1, 600);
+                              
+                   if(Nums[0]){
+                      SND_Play(Nums[0]);
+                      OSTimeDlyHMSM(0, 0, 0, 800);
+                   }
+                   if(Nums[1]){
+                      SND_Play(Nums[1]);
+                      OSTimeDlyHMSM(0, 0, 0, 800);                      
+                   }
+                   if(Nums[2]){
+                      SND_Play(Nums[2]);
+                      OSTimeDlyHMSM(0, 0, 1, 0);                    
+                   }
+                   SND_Play(SND_ID_NM);
+               } 
+            }     
+               playList  = 2;
             }
-            
-         }
+  
          else
-         {
-             ;    
+         {   
+#endif      
+            thisMntBerth  = MNT_fetchNextPlayBerth();
+            if(thisMntBerth)
+            {         
+               switch( (thisMntBerth->trgState&0xf0))
+               {
+                  case (0x01<<7):
+                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                       {         
+                          SND_Play(thisMntBerth->nickName[0] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 600);
+                       }
+                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                       {
+                          SND_Play(thisMntBerth->nickName[1] - '0');
+                          OSTimeDlyHMSM(0, 0, 0, 800 );
+                          SND_Play(SND_ID_DEV);
+                          OSTimeDlyHMSM(0, 0, 1, 400);
+                       }            
+                       SND_Play(SND_ID_DSP);
+                       OSTimeDlyHMSM(0, 0, 1, 200);
+                       
+                       SND_ParseDist(thisMntBerth->snapDist, Nums);
+                       SND_Play(SND_ID_DST);
+                       OSTimeDlyHMSM(0, 0, 1, 600);
+                       
+                       if(Nums[0])                    
+                       {
+                          SND_Play(Nums[0]);
+                          OSTimeDlyHMSM(0, 0, 0, 800);
+                       }
+                       if(Nums[1])
+                       {
+                          SND_Play(Nums[1]);
+                          OSTimeDlyHMSM(0, 0, 0, 800);                      
+                       }
+                       if(Nums[2])
+                       {
+                          SND_Play(Nums[2]);
+                          OSTimeDlyHMSM(0, 0, 1, 0);                    
+                       }
+                       SND_Play(SND_ID_NM);
+                       
+                       break;
+                       
+                  case (0x01<<6):
+                       if(thisMntBerth->mntBoat.mntSetting.DRG_Setting.isSndEnable)
+                       {
+                          if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                          {         
+                             SND_Play(thisMntBerth->nickName[0] - '0');
+                             OSTimeDlyHMSM(0, 0, 0, 600);
+                          }
+                          if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                          {
+                             SND_Play(thisMntBerth->nickName[1] - '0');
+                             OSTimeDlyHMSM(0, 0, 0, 800 );
+                             SND_Play(SND_ID_DEV);
+                             OSTimeDlyHMSM(0, 0, 1, 400);
+                          }                  
+                       
+                          SND_Play(SND_ID_DRG);
+                          OSTimeDlyHMSM(0, 0, 1, 0);
+                          if(thisMntBerth->pBerth->Boat.dist < 99999)
+                          {
+                             SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);                  
+                             SND_Play(SND_ID_DST);
+                             OSTimeDlyHMSM(0, 0, 1, 400);
+                             
+                             if(Nums[0])                    
+                             {
+                                SND_Play(Nums[0]);
+                                OSTimeDlyHMSM(0, 0, 0, 800);
+                             }
+                             if(Nums[1])
+                             {
+                                SND_Play(Nums[1]);
+                                OSTimeDlyHMSM(0, 0, 0, 800);                      
+                             }
+                             if(Nums[2])
+                             {
+                                SND_Play(Nums[2]);
+                                OSTimeDlyHMSM(0, 0, 1, 0);                    
+                             }
+                             SND_Play(SND_ID_NM);
+                          } 
+                       }                 
+                       break;
+                       
+                  case (0x01<<5):
+                       if(thisMntBerth->mntBoat.mntSetting.BGL_Setting.isSndEnable)
+                       {
+                       
+                          if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9' )             
+                          {         
+                             SND_Play(thisMntBerth->nickName[0] - '0');
+                             OSTimeDlyHMSM(0, 0, 0, 600);
+                          }
+                          if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9')
+                          {
+                             SND_Play(thisMntBerth->nickName[1] - '0');
+                             OSTimeDlyHMSM(0, 0, 0, 800 );
+                             SND_Play(SND_ID_DEV);
+                             OSTimeDlyHMSM(0, 0, 1, 400);
+                          }                  
+                          SND_Play(SND_ID_BGL);
+                          OSTimeDlyHMSM(0, 0, 1, 0);          
+
+                          if(thisMntBerth->pBerth->Boat.dist < 99999)
+                          {
+                             SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);
+                             SND_Play(SND_ID_DST);
+                             OSTimeDlyHMSM(0, 0, 1, 400);
+                             
+                             if(Nums[0])                    
+                             {
+                                SND_Play(Nums[0]);
+                                OSTimeDlyHMSM(0, 0, 0, 800);
+                             }
+                             if(Nums[1])
+                             {
+                                SND_Play(Nums[1]);
+                                OSTimeDlyHMSM(0, 0, 0, 800);                      
+                             }
+                             if(Nums[2])
+                             {
+                                SND_Play(Nums[2]);
+                                OSTimeDlyHMSM(0, 0, 1, 0);                    
+                             }
+                             SND_Play(SND_ID_NM);
+                          } 
+                       }                 
+                       break;
+               }
+               
+            }
+            else
+            {
+                ;    
+            }
+         
+#ifdef P_AM128A
+            playList  = 1;
          }
-      
-         playList  = 2;
-      }
-
-      OSTimeDlyHMSM(0, 0,  5,  0);
+#endif      
    }
-   
-
+   OSTimeDlyHMSM(0, 0,  5,  0);
+   }
 }
+   
  
  
 void App_TaskStart(void)//初始化UCOS，初始化SysTick节拍，并创建三个任务

@@ -8,6 +8,7 @@
 #include "map.h"
 #include "16.h"
 #include "snap.h"
+#include "bully.h"
 
 /// Just for copy
 
@@ -390,7 +391,7 @@ static void draw_boatInfo( short base_x, short base_y, boat * pBoat,unsigned cha
       /// Show battery in tip.
       if( options & SHOW_OPTION_BAT )
       {
-         if( (pBoat->category&0x0f) == TYPE_HSD)
+         if(pBoat->category == TYPE_HSD)
          {                
             char   i  = 0;            
             char   power      = (pBoat->COG/10) % 10;
@@ -436,6 +437,9 @@ static void draw_boatInfo( short base_x, short base_y, boat * pBoat,unsigned cha
                      draw_batSlot(batBody_x+7, batBody_y+2);
                      draw_batSlot(batBody_x+15,batBody_y+2);
                      break;
+                default:
+                    ;              
+                    break;                
             }
             
 //            if(i>1)
@@ -607,6 +611,7 @@ static void draw_mothership(const long lg, const long lt,const map_scale * pScal
 		 {
       GUI_SetColor(pSkin->boat_Mom);
       GUI_SetPenSize(MM_BOAT_PENSIZE);
+      GUI_SetLineStyle(GUI_LS_SOLID);
       
       GUI_DrawPolygon(aEnlargedPoints,GUI_COUNTOF(bPoints),basePoint_x, basePoint_y);
 	 	}
@@ -892,6 +897,61 @@ static void disp_mntBoat(const long center_lg,const long center_lt, const map_sc
 //   }
 }
 
+
+
+static void disp_bully(const long center_lg, const long center_lt, const map_scale* pScale){
+   short base_x  = 0;
+   short base_y  = 0;
+   
+//   GUI_POINT aEnlargedPoints[GUI_COUNTOF(bPoints)];
+   
+   int isCursorVisible  = GUI_CURSOR_GetState();
+   
+   BULY_BERTH* pBuly  = pBulyHeader;
+   
+   if(pBuly && BULY_getValidNumber()){
+      while(pBuly){
+         if(pBuly->pBoatLink->mntState != MNTState_Triggered){
+            pBuly  = pBuly->pNext;
+            continue;
+         }
+         
+         if(pBuly->pBoatLink->Boat.latitude && pBuly->pBoatLink->Boat.longitude ){
+            base_x  = pScale->pixel *(pBuly->pBoatLink->Boat.longitude -center_lg) /pScale->minute;
+            base_y  = pScale->pixel *(pBuly->pBoatLink->Boat.latitude - center_lt) /pScale->minute;
+            
+            base_x  = (MAP_LEFT /2 + MAP_RIGHT /2) +base_x;
+            base_y  = (MAP_TOP /2 + MAP_BOTTOM /2) -base_y;
+            
+
+            
+            if( (base_x >= MAP_LEFT)  &&  (base_x <= MAP_RIGHT)  &&  (base_y >= MAP_TOP)  &&  (base_y <= MAP_BOTTOM) ){
+//               GUI_RotatePolygon(aEnlargedPoints, bPoints, GUI_COUNTOF(bPoints), (360-pBuly->pBoatLink->Boat.COG /10) *3.14 /180);
+               draw_boat(&pBuly->pBoatLink->Boat, base_x, base_y, pPoints, PointNum);
+               if(!AdsorbedMMSI  &&  (MYABS(base_x-__cursor.x) <= 8)  &&  (MYABS(base_y-__cursor.y) <= 8) ){
+                  AdsorbedMMSI  = pBuly->pBoatLink->Boat.user_id;
+               }
+               if( AdsorbedMMSI == pBuly->pBoatLink->Boat.user_id  &&  isCursorVisible){
+                  GUI_SetColor(ADB_BOAT_COLOR);
+                  tipLink.pLink  = &pBuly->pBoatLink->Boat;
+                  tipLink.x  = base_x;
+                  tipLink.y  = base_y;
+                  tipLink.type  = 1;
+               }
+               else{
+                  GUI_SetColor(pSkin->ttl_Label );
+               }
+               GUI_SetPenSize(MM_BOAT_PENSIZE);
+               GUI_SetLineStyle(GUI_LS_SOLID);
+//               GUI_DrawPolygon(aEnlargedPoints, GUI_COUNTOF(bPoints), base_x, base_y);
+               draw_boat(&pBuly->pBoatLink->Boat, base_x, base_y, pPoints, PointNum);
+            }
+         }
+         
+         pBuly  = pBuly->pNext;
+      }
+   }
+}
 
 
  
@@ -1230,8 +1290,32 @@ void getMntWrapPara(long *halfDiff_lg, long* halfDiff_lt, map_scale* pScale)
       
       pIterator  = pIterator->pNext;
    }
+#ifdef P_AM128A   
+   if(BULY_getValidNumber() > 0){
+      BULY_BERTH* pBuly  = pBulyHeader ;
+      
+      while(pBuly){
+         if(pBuly->pBoatLink->Boat.latitude > 0){
+            if(pBuly->pBoatLink->Boat.longitude < min_lg){
+               min_lg  = pBuly->pBoatLink->Boat.longitude;
+            }
+            else if(pBuly->pBoatLink->Boat.longitude > max_lg){
+               max_lg  = pBuly->pBoatLink->Boat.longitude;
+            }
+            
+            if(pBuly->pBoatLink->Boat.latitude < min_lt){
+               min_lt  = pBuly->pBoatLink->Boat.latitude ;
+            }
+            else if(pBuly->pBoatLink->Boat.latitude > max_lt){
+               max_lt  = pBuly->pBoatLink->Boat.latitude;
+            }
+         }
+         
+         pBuly  = pBuly->pNext;
+      }
+   }
    
-   
+#endif   
    maxDiff_lg  = max_lg - min_lg;
    maxDiff_lt  = max_lt - min_lt;
    
@@ -1369,6 +1453,9 @@ void setManualView(long lg, long lt, map_scale* pScale)
    disp_mntBoat(lg,lt,pScale);
 
    draw_mothership(lg,lt, pScale);
+#ifdef P_AM128A   
+   disp_bully(lg, lt, pScale);
+#endif   
    draw_scale(pScale, 640, 440);
 }
 
@@ -1423,6 +1510,9 @@ void setAutoView(long lg, long lt, map_scale* pNull)
    disp_mntBoat(MapPara_lg, MapPara_lt, &AutoScale);  
 
    draw_mothership(MapPara_lg,MapPara_lt,&AutoScale);
+#ifdef P_AM128A   
+   disp_bully(MapPara_lg, MapPara_lt, &AutoScale);
+#endif   
    draw_scale(&AutoScale, 640,440);
    if(tipLink.pLink != NULL)
    {
@@ -1430,7 +1520,7 @@ void setAutoView(long lg, long lt, map_scale* pNull)
       {
          case 1:
 //  draw_boatInfo(base_x, base_y, &SimpBerthes[i].pBerth->Boat, SHOW_OPTION_NAME | SHOW_OPTION_SCOG | SHOW_OPTION_LL | SHOW_OPTION_DST);
-              draw_boatInfo(tipLink.x, tipLink.y, tipLink.pLink,  SHOW_OPTION_NAME | SHOW_OPTION_SCOG | SHOW_OPTION_LL | SHOW_OPTION_DST);
+              draw_boatInfo(tipLink.x, tipLink.y, tipLink.pLink,  SHOW_OPTION_BAT|  SHOW_OPTION_NAME | SHOW_OPTION_SCOG | SHOW_OPTION_LL | SHOW_OPTION_DST);
               break;
          case 2:
               draw_dspBoatInfo( tipLink.x, tipLink.y, tipLink.pLink);

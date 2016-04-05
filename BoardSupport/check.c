@@ -5,6 +5,7 @@
 #include "invader.h"
 #include <ucos_ii.h>
 #include <string.h>
+#include "bully.h"
 
 
 /*----------------- Macro      defines --------------------------*/
@@ -68,6 +69,7 @@ void check()
       isKeyTrigged   = 0;
      
       /// 将所有触发态掩盖
+      
       pIterator  = pMntHeader;
       while(pIterator)
       {

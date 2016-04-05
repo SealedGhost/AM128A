@@ -44,11 +44,22 @@
 #define ID_BUTTON_2 (GUI_ID_USER + 0x03)
 #define ID_BUTTON_3 (GUI_ID_USER + 0x04)
 
+#ifdef P_AM128A
+#define ID_BUTTON_4  (GUI_ID_USER + 0x05)
+
+#define MENU_ITEM_NUM  5
+
+#else
+
+#define MENU_ITEM_NUM  4
+
+#endif
+
 
 
 /*---------------------------- Global variables -------------------------------*/
 WM_HWIN menuWin;
-WM_HWIN subWins[4];
+
 
 
 static const MenuWin_COLOR * pSkin  = &menuWinSkins[0];
@@ -59,7 +70,7 @@ static const MenuWin_COLOR * pSkin  = &menuWinSkins[0];
 *       Static data
 *
 **********************************************************************/
-static WM_HWIN hButtons[4];
+static WM_HWIN hButtons[MENU_ITEM_NUM];
 
 
 static void myButtonListener(WM_MESSAGE * pMsg);
@@ -77,6 +88,9 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[] = {
   { HSD_BUTTON_CreateIndirect, "bt_1", ID_BUTTON_1, MenuLabel_X, MenuLabel_Y+MenuButton_HEIGHT,  MenuButton_WIDTH, MenuButton_HEIGHT, 0, 0x0, 0 },
   { HSD_BUTTON_CreateIndirect, "bt_2", ID_BUTTON_2, MenuLabel_X, MenuLabel_Y+MenuButton_HEIGHT*2,MenuButton_WIDTH, MenuButton_HEIGHT, 0, 0x0, 0 },
   { HSD_BUTTON_CreateIndirect, "bt_3", ID_BUTTON_3, MenuLabel_X, MenuLabel_Y+MenuButton_HEIGHT*3,MenuButton_WIDTH, MenuButton_HEIGHT, 0, 0x0, 0 },
+#ifdef P_AM128A
+  { HSD_BUTTON_CreateIndirect, "bt_4", ID_BUTTON_4, MenuLabel_X, MenuLabel_Y+MenuButton_HEIGHT*4,MenuButton_WIDTH, MenuButton_HEIGHT, 0, 0x0, 0}
+#endif  
 };
 
 
@@ -111,9 +125,8 @@ INFO("case msg skin");
          
          WINDOW_SetBkColor(pMsg->hWin,pSkin->bkColor);         
                  
-         for(i=4; i>>0; )
+         for(i=0; i<MENU_ITEM_NUM; i++ )
          {
-            i--;
             HSD_BUTTON_SetBkColor(hButtons[i], pSkin->btBkColor);
             HSD_BUTTON_SetTBLineColor(hButtons[i], pSkin->tbColor);
             HSD_BUTTON_SetFocusBkColor(hButtons[i], pSkin->btBkFocus);
@@ -140,24 +153,29 @@ INFO("case msg skin");
     //
     hButtons[0] = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_0);
     HSD_BUTTON_SetText(hButtons[0], "监控列表");
+    
     //
     // Initialization of 'bt_1'
     //
     hButtons[1] = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_1);
     HSD_BUTTON_SetText(hButtons[1], "监控设置");
-
-    //
-    // Initialization of 'bt_3'
-    //
-    hButtons[3] = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_3);
-    HSD_BUTTON_SetText(hButtons[3], "系统设置");	
-    
+ 
     //
     // Initialization of 'bt_2'
     //
     hButtons[2] = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_2);
     HSD_BUTTON_SetText(hButtons[2], "船舶列表");	
     
+    //
+    // Initialization of 'bt_3'
+    //
+    hButtons[3] = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_3);
+    HSD_BUTTON_SetText(hButtons[3], "系统设置");	    
+    
+#ifdef P_AM128A
+   hButtons[4]  = WM_GetDialogItem(pMsg->hWin, ID_BUTTON_4);
+   HSD_BUTTON_SetText(hButtons[4], "特殊报警");
+#endif    
 /**
  *  emWin Bug
  */  
@@ -166,9 +184,8 @@ INFO("case msg skin");
     WINDOW_SetBkColor(pMsg->hWin,pSkin->bkColor);  
 //    TEXT_SetTextColor(WM_GetDialogItem(pMsg->hWin, ID_TEXT_0), pSkin->Menu_Label);
     
-		  for (i=4; i;)
+		  for (i=0; i<MENU_ITEM_NUM; i++)
 	  	{		
-       i--;
        HSD_BUTTON_SetTxFont(hButtons[i], &GUI_Font30);
        HSD_BUTTON_SetBkColor(hButtons[i], pSkin->btBkColor);
        HSD_BUTTON_SetTBLineColor(hButtons[i], pSkin->tbColor);
@@ -220,7 +237,7 @@ static void myButtonListener(WM_MESSAGE * pMsg)
  
     case WM_SET_FOCUS:
          btIndex  = WM_GetId(pMsg->hWin) - ID_BUTTON_0;
-         if(btIndex < 4  &&  btIndex >= 0)
+         if(btIndex < MENU_ITEM_NUM   &&  btIndex >= 0)
          {
             if(pMsg->Data.v)
             {      
@@ -285,6 +302,9 @@ static void myButtonListener(WM_MESSAGE * pMsg)
                   WM_HideWindow(subWins[1]);
                   WM_HideWindow(subWins[2]);
                   WM_HideWindow(subWins[3]);
+#ifdef P_AM128A
+WM_HideWindow(subWins[4]);
+#endif                  
                   WM_HideWindow(mntSettingWin);     
                   HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkColor);   
                   WM_SetFocus(hButtons[0]);         
