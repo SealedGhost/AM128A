@@ -41,25 +41,37 @@ static const GUI_WIDGET_CREATE_INFO _aDialogCreate[]  =
 
 static WM_HWIN Slideres[6];
 
-static unsigned char  aagentNations;
+static unsigned char  agentNations;
 
 static void _cbDialog(WM_MESSAGE* pMsg){
    int i  = 0;
 
    switch(pMsg->MsgId ){
+      case USER_MSG_SKIN:
+           pSkin  = &(SysWinSkins[pMsg->Data.v]);
+           WINDOW_SetBkColor(pMsg->hWin, pSkin->bkColor);
+           for(i=0; i<6; i++){
+              HSD_SLIDER_SetBkColor(Slideres[i], pSkin->sldBk);
+              HSD_SLIDER_SetFocusBkColor(Slideres[i], pSkin->sldBk);
+              HSD_SLIDER_SetSlotColor(Slideres[i], pSkin->sldSlot);
+              HSD_SLIDER_SetFocusSlotColor(Slideres[i], pSkin->sldSlot);
+              HSD_SLIDER_SetSliderColor(Slideres[i], pSkin->sldSlider);
+              HSD_SLIDER_SetFocusSliderColor(Slideres[i], pSkin->sldFocusSlider);
+           }
+           break;
       case USER_MSG_REPLY:
            if(pMsg->Data.v  == REPLY_OK){
-              SysConf.nations  = aagentNations;
+              SysConf.nations  = agentNations;
               sysStore();
            }
            else{
-              aagentNations  = SysConf.nations;
-              HSD_SLIDER_SetValue(Slideres[0], aagentNations & 0x01);
-              HSD_SLIDER_SetValue(Slideres[1], (aagentNations>>1) & 0x01);
-              HSD_SLIDER_SetValue(Slideres[2], (aagentNations>>2) & 0x01);
-              HSD_SLIDER_SetValue(Slideres[3], (aagentNations>>3) & 0x01);
-              HSD_SLIDER_SetValue(Slideres[4], (aagentNations>>4) & 0x01);
-              HSD_SLIDER_SetValue(Slideres[5], (aagentNations>>5) & 0x01);
+              agentNations  = SysConf.nations;
+              HSD_SLIDER_SetValue(Slideres[0], agentNations & 0x01);
+              HSD_SLIDER_SetValue(Slideres[1], (agentNations>>1) & 0x01);
+              HSD_SLIDER_SetValue(Slideres[2], (agentNations>>2) & 0x01);
+              HSD_SLIDER_SetValue(Slideres[3], (agentNations>>3) & 0x01);
+              HSD_SLIDER_SetValue(Slideres[4], (agentNations>>4) & 0x01);
+              HSD_SLIDER_SetValue(Slideres[5], (agentNations>>5) & 0x01);
            }
            
            WM_SetFocus(Slideres[0]);
@@ -67,39 +79,39 @@ static void _cbDialog(WM_MESSAGE* pMsg){
            break;
       
       case WM_INIT_DIALOG:
-           aagentNations  = SysConf.nations;
-INFO("nations:0x%x",aagentNations);
+           agentNations  = SysConf.nations;
+INFO("nations:0x%x",agentNations);
            pSkin  = &(SysWinSkins[SysConf.Skin]);
            
            Slideres[0]  = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_CTB);
            WM_SetCallback(Slideres[0], &sldListener);
            HSD_SLIDER_SetRange(Slideres[0], 0, 1);
-           HSD_SLIDER_SetValue(Slideres[0], aagentNations & 0x01);
+           HSD_SLIDER_SetValue(Slideres[0], agentNations & 0x01);
            
            Slideres[1]  = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_JPN);
            WM_SetCallback(Slideres[1], &sldListener);
            HSD_SLIDER_SetRange(Slideres[1], 0, 1);                      
-           HSD_SLIDER_SetValue(Slideres[1], (aagentNations>>1) & 0x01);
+           HSD_SLIDER_SetValue(Slideres[1], (agentNations>>1) & 0x01);
            
            Slideres[2]  = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_KOR);
            WM_SetCallback(Slideres[2], &sldListener);
            HSD_SLIDER_SetRange(Slideres[2], 0, 1);                      
-           HSD_SLIDER_SetValue(Slideres[2], (aagentNations>>2) & 0x01);
+           HSD_SLIDER_SetValue(Slideres[2], (agentNations>>2) & 0x01);
            
            Slideres[3]  = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_PRK);
            WM_SetCallback(Slideres[3], &sldListener);
            HSD_SLIDER_SetRange(Slideres[3], 0, 1);                      
-           HSD_SLIDER_SetValue(Slideres[3], (aagentNations>>3) & 0x01);           
+           HSD_SLIDER_SetValue(Slideres[3], (agentNations>>3) & 0x01);           
            
            Slideres[4]  = WM_GetDialogItem(pMsg->hWin,  ID_SLIDER_INA);
            WM_SetCallback(Slideres[4], &sldListener);
            HSD_SLIDER_SetRange(Slideres[4], 0, 1);                      
-           HSD_SLIDER_SetValue(Slideres[4], (aagentNations>>4) & 0x01);           
+           HSD_SLIDER_SetValue(Slideres[4], (agentNations>>4) & 0x01);           
            
            Slideres[5]  = WM_GetDialogItem(pMsg->hWin, ID_SLIDER_VIE);
            WM_SetCallback(Slideres[5], &sldListener);
            HSD_SLIDER_SetRange(Slideres[5], 0, 1);                      
-           HSD_SLIDER_SetValue(Slideres[5], (aagentNations>>5) & 0x01); 
+           HSD_SLIDER_SetValue(Slideres[5], (agentNations>>5) & 0x01); 
            
            WINDOW_SetBkColor(pMsg->hWin, pSkin->bkColor);  
 
@@ -183,8 +195,8 @@ static void sldListener(WM_MESSAGE* pMsg){
            pInfo  = (WM_KEY_INFO*)(pMsg->Data.p);
            switch(pInfo->Key){
               case GUI_KEY_BACKSPACE:
-                   if(aagentNations == SysConf.nations){
-INFO("nations:0x%x, sys.nation:0x%0x",aagentNations, SysConf.nations);                   
+                   if(agentNations == SysConf.nations){
+INFO("nations:0x%x, sys.nation:0x%0x",agentNations, SysConf.nations);                   
                       WM_SetFocus(Slideres[0]);
                       WM_SetFocus(menuWin);
                    }
@@ -201,13 +213,13 @@ INFO("nations:0x%x, sys.nation:0x%0x",aagentNations, SysConf.nations);
                    
               case GUI_KEY_LEFT:
                    id  = WM_GetId(pMsg->hWin) - ID_SLIDER_CTB;
-                   aagentNations  = (aagentNations & (~(0x01<<id)));
+                   agentNations  = (agentNations & (~(0x01<<id)));
                    SLIDER_Callback(pMsg);
                    break;
                    
               case GUI_KEY_RIGHT:
                    id  = WM_GetId(pMsg->hWin) - ID_SLIDER_CTB;
-                   aagentNations  = aagentNations | (0x01<<id);
+                   agentNations  = agentNations | (0x01<<id);
                    SLIDER_Callback(pMsg);
                    break;
                    

@@ -60,8 +60,6 @@
 /*---------------------------- Global variables -------------------------------*/
 WM_HWIN menuWin;
 
-
-
 static const MenuWin_COLOR * pSkin  = &menuWinSkins[0];
 
 
@@ -118,7 +116,12 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
     case USER_MSG_DFULT_CNT:
          HSD_BUTTON_SetValue(hButtons[1], pMsg->Data.v);
          break;
-              
+     
+    case USER_MSG_FOCUS:
+         HSD_BUTTON_SetBkColor(hButtons[0], pSkin->btBkColor);
+         WM_SetFocus(hButtons[2]);
+         break;         
+    
     case USER_MSG_SKIN: 
 INFO("case msg skin");    
          pSkin  = &(menuWinSkins[pMsg->Data.v]);
@@ -196,6 +199,7 @@ INFO("case msg skin");
        HSD_BUTTON_SetVFocusColor(hButtons[i], pSkin->btTxFocus); 
        WM_SetCallback(hButtons[i], &myButtonListener);
 		  }
+    
     break;
 
   default:
@@ -227,22 +231,19 @@ WM_HWIN menuWinCreate(void) {
 
 static void myButtonListener(WM_MESSAGE * pMsg)
 {
- static int selIndex  = 2;
 	const WM_KEY_INFO * pInfo;
 	WM_HWIN thisButton  = pMsg->hWin;
-	
+	static int selIndex  = 2;
 	
 	switch(pMsg->MsgId)
 	{
- 
     case WM_SET_FOCUS:
-         btIndex  = WM_GetId(pMsg->hWin) - ID_BUTTON_0;
+         btIndex  = WM_GetId(pMsg->hWin) - ID_BUTTON_0;       
          if(btIndex < MENU_ITEM_NUM   &&  btIndex >= 0)
          {
             if(pMsg->Data.v)
-            {      
-               selIndex  = btIndex;   
-               
+            {          
+               selIndex  = btIndex;    
                /**Background color can't change with focus in HSD_BUTTON_Callbak  */
                HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkFocus);    
                WM_BringToTop(subWins[btIndex]);
@@ -253,7 +254,7 @@ static void myButtonListener(WM_MESSAGE * pMsg)
                }
              }
              else
-             {      
+             {              
                 if(selIndex == btIndex)
                 {
                    HSD_BUTTON_SetBkColor(thisButton, pSkin->btBkSel);

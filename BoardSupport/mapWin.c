@@ -13,6 +13,7 @@
 
 extern GUI_CONST_STORAGE GUI_BITMAP bmgg;
 
+
 #define ID_WINDOW_0    (GUI_ID_USER + 0x00)
 
 
@@ -146,8 +147,10 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
              WM_ShowWindow(subWins[2]);
              WM_ShowWindow(subWins[3]);
              WM_BringToTop(subWins[2]);
-             WM_SetFocus(WM_GetDialogItem(menuWin, GUI_ID_USER + 0x03));             
-             WM_SetFocus(subWins[2]);
+                    
+//             WM_SetFocus(subWins[2]);
+//             WM_SetFocus(WM_GetDialogItem(menuWin, GUI_ID_USER + 0x03));   
+             WM_SendMessageNoPara(menuWin, USER_MSG_FOCUS);            
              break;
         
         case REPLY_CANCEL:

@@ -151,7 +151,7 @@ void sysStore()
 }
 
 
-void sysInit()
+  void sysInit()
 {        
    if(sysLoad())
    {
