@@ -40,7 +40,7 @@
 #include "28.h"
 
 
-#define LV_PAGE_SIZE  9
+
 
 /*--- external variables ---*/
 extern SIMP_BERTH SimpBerthes[BOAT_NUM_MAX];
@@ -691,14 +691,28 @@ static void updateListViewContent(WM_HWIN thisHandle)
    
    if(N_boat <= 0)
    {
-      return ;
+     // modifided by Bill
+     LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, 0, pStrBuf, 11); 
+     selectedMMSI  = strtoi(pStrBuf); 
+     if(selectedMMSI)
+     {
+       for(i=0; i<9; i++)
+       {
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST, i, "");
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, "");
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT,  i, "");
+       }
+       return ;
+     }
+     return ;
    } 
+   
    selRow  = LISTVIEW_GetSel(thisListView);  
    LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selRow, pStrBuf, 11); 
    selectedMMSI  = strtoi(pStrBuf);  
    if(selectedMMSI)
    {
-      for(i=N_boat; i>=0; i--)
+      for(i=0; i<N_boat; i++)
       {
          if(SimpBerthes[i].pBerth->Boat.user_id == selectedMMSI)
          {

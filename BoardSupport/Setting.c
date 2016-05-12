@@ -2,6 +2,7 @@
 #include <string.h>
 #include "sysConf.h"
 #include "invader.h"
+#include "snap.h"
 #include <ucos_ii.h>
 
 
@@ -296,6 +297,9 @@ Bool MNT_removeById(long Id)
       if(pIterator->mntBoat.mmsi == Id)
       {
          pIterator->chsState  = MNTState_Cancel;
+         if(SNAP_getSnapObjMMSI() == Id){
+            SNAP_reset();
+         }
          return TRUE;
       }
       else
@@ -425,13 +429,13 @@ void printSetting(MNT_SETTING * p_setting)
 {
    if(p_setting)
    {
-      printf("   DSP     %s\r\n",p_setting->DSP_Setting.isEnable>DISABLE?"Enable":"Disable");
-      printf("   BGL     %s\r\n",p_setting->BGL_Setting.isEnable>DISABLE?"Enable":"Disable");
-      printf("       snd %s\r\n",p_setting->BGL_Setting.isSndEnable>DISABLE?"Enable":"Disable");
-      printf("      dist %d\r\n",p_setting->BGL_Setting.Dist);
-      printf("   DRG     %s\r\n",p_setting->DRG_Setting.isEnable>DISABLE?"Enable":"Disable");
-      printf("       snd %s\r\n",p_setting->DRG_Setting.isSndEnable>DISABLE?"Enable":"Disable");
-      printf("      dist %d\r\n",p_setting->DRG_Setting.Dist);
+      PRINT("   DSP     %s",p_setting->DSP_Setting.isEnable>DISABLE?"Enable":"Disable");
+      PRINT("   BGL     %s",p_setting->BGL_Setting.isEnable>DISABLE?"Enable":"Disable");
+      PRINT("       snd %s",p_setting->BGL_Setting.isSndEnable>DISABLE?"Enable":"Disable");
+      PRINT("      dist %d",p_setting->BGL_Setting.Dist);
+      PRINT("   DRG     %s",p_setting->DRG_Setting.isEnable>DISABLE?"Enable":"Disable");
+      PRINT("       snd %s",p_setting->DRG_Setting.isSndEnable>DISABLE?"Enable":"Disable");
+      PRINT("      dist %d",p_setting->DRG_Setting.Dist);
    }
    else
    {
@@ -454,10 +458,10 @@ void MNT_printSetting()
    
    while(pIterator)
    {
-         printf("\r\n");
-         printf("mmsi %ld\r\n",pIterator->mntBoat.mmsi);
+         PRINT("");
+         PRINT("mmsi %ld",pIterator->mntBoat.mmsi);
          printSetting(&(pIterator->mntBoat.mntSetting));
-         printf("rn State:%d\n\r",pIterator->chsState);
+         PRINT("rn State:%d",pIterator->chsState);
          pIterator  = pIterator->pNext;
    }
 }

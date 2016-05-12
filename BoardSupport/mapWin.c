@@ -162,7 +162,7 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
   
 		case WM_TIMER: 
        if(ID_TIMER_CURSOR  == WM_GetTimerId(cursorTimer))
-       {        
+       {       
           onCursorMoved();
           WM_RestartTimer(pMsg->Data.v, 50);
        }
@@ -220,16 +220,20 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
                   Dir_y  = 1;             
                   break;
           }  
-          if(pfnSetView == setManualView)          
-          {
-              WM_DeleteTimer(reTimer);
-              cursorTimer  = WM_CreateTimer(mapWin, ID_TIMER_CURSOR, 500, 0);           
-//              onCursorMoved();            
+          
+          if(pfnSetView ==  setAutoView){
+             SNAP_searchNearestObj(Dir_x, Dir_y); 
           }
-          else
-          {
-             SNAP_searchNearestObj(Dir_x, Dir_y);
-          }
+//          if(pfnSetView == setManualView)          
+//          {
+//              WM_DeleteTimer(reTimer);
+//              cursorTimer  = WM_CreateTimer(mapWin, ID_TIMER_CURSOR, 500, 0);           
+////              onCursorMoved();            
+//          }
+//          else
+//          {
+//             SNAP_searchNearestObj(Dir_x, Dir_y);
+//          }
        }
        else switch(pKeyInfo->Key)
        {
@@ -245,8 +249,12 @@ static void _cbWindowAllFishMap(WM_MESSAGE* pMsg)
 //                 pfnSetView  = setManualView;
 
               if(pfnSetView == setManualView)
-              {
+              {  
+                 
                  pfnSetView  = setAutoView;
+                 __cursor.longitude  = mothership.longitude;
+                 __cursor.latitude   = mothership.latitude;
+                 SNAP_reset();
                  WM_InvalidateRect(mapWin,&Rect_Map);
                  WM_Paint(mapWin);
               }
@@ -339,10 +347,13 @@ WM_ShowWindow(subWins[4]);
              WM_SendMessageNoPara(subWins[3], USER_MSG_DIM);
              break;
         case GUI_KEY_MONITORING:
-             isMntEnable  = ENABLE;  
-             gIsMute  = FALSE;
-             MNT_Disable();
-             MNT_Enable();             
+             if(isMntEnable == DISABLE){
+                isMntEnable  = ENABLE;  
+                gIsMute  = FALSE;
+                MNT_Disable();
+                MNT_Enable();  
+             }
+           
              break;
              
         case GUI_KEY_CANCEL:   

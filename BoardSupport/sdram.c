@@ -17,7 +17,7 @@
 #include "lpc177x_8x_pinsel.h"
 #include "lpc177x_8x_timer.h"
 #include "uart.h"
-
+#include "Config.h"
 /************************************* End *************************************/
 #include "sdram.h"
 /************************************************************************************
@@ -208,7 +208,7 @@ void lpc1788_SDRAM_Test()
    uint32_t colCnt  = 0;
    uint32_t t  = 0;
   
-printf("SDRAM TEST... \r\n");
+PRINT("SDRAM TEST... \r\n");
   
    ptr  = (uint16_t*)SDRAM_BASE_ADDR;
    for(i=0; i<SDRAM_SIZE; i++)
@@ -228,16 +228,16 @@ printf("SDRAM TEST... \r\n");
       {
          cnt++;
          colCnt++;
-         printf("%p:%x  ",ptr, *ptr);
+         PRINT("%p:%x  ",ptr, *ptr);
          if(colCnt == 5)
          {
-            printf("\r\n");
+            PRINT(" ");
             colCnt=0;
          }
          
          if(cnt >= 1000)
          {
-            printf("\r\n\n");
+            PRINT(" ");
             break;
          }
       }
@@ -246,7 +246,7 @@ printf("SDRAM TEST... \r\n");
    
    
 
-   printf("%u data error\r\n",cnt);
+   PRINT("%u data error",cnt);
 
 }
 

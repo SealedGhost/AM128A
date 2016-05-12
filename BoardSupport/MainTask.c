@@ -10,6 +10,7 @@
 #include "dlg.h"
 #include "sound.h"
 #include "Config.h"
+#include "xt_isd.h"
 
 extern unsigned char isSub0Inited;
 extern unsigned char isSub2Inited;
@@ -23,7 +24,7 @@ void MainTask(void)
 {
    GUI_MEMDEV_Handle hMem0;
   
-   sysInit();
+
 
    GUI_Init();	
    WM_SetCreateFlags(WM_CF_MEMDEV);
@@ -38,9 +39,12 @@ void MainTask(void)
    GUI_SetColor (0xb58400);
    GUI_SetFont (&GUI_Font120);
 #ifdef P_AM128A
-   GUI_DispStringAt("AM-128A", 195,100);   
+   GUI_DispStringAt("AM-128A", 195,100); 
+PRINT("AM-128A");   
 #else
    GUI_DispStringAt("AM-128B",195,100);
+PRINT("AM-128B");   
+PRINT()   
 #endif   
    GUI_PNG_Draw (&_accover_colo_1,sizeof(_accover_colo_1),300,LCD_GetYSize()/2);  
    
@@ -51,19 +55,6 @@ void MainTask(void)
    
    
    GUI_Delay(500);
-//   SND_Init();
-//   GUI_Delay(200);
-
-
-   SND_SetVol(SysConf.Vol);
-   GUI_Delay(200);
-   SND_Play(SND_ID_WLCM);
-#ifdef P_AM128A
-INFO("Product :AM128A");
-#else
-INFO("Product :AM128B");
-#endif
-
 
    GUI_Clear();
    //创建字体

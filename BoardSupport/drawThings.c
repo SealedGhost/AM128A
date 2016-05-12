@@ -910,6 +910,9 @@ static void disp_bully(const long center_lg, const long center_lt, const map_sca
    BULY_BERTH* pBuly  = pBulyHeader;
    
    if(pBuly && BULY_getValidNumber()){
+      GUI_SetPenSize(4);
+      GUI_SetLineStyle(GUI_LS_SOLID);
+   
       while(pBuly){
          if(pBuly->pBoatLink->mntState != MNTState_Triggered){
             pBuly  = pBuly->pNext;
@@ -927,7 +930,7 @@ static void disp_bully(const long center_lg, const long center_lt, const map_sca
             
             if( (base_x >= MAP_LEFT)  &&  (base_x <= MAP_RIGHT)  &&  (base_y >= MAP_TOP)  &&  (base_y <= MAP_BOTTOM) ){
 //               GUI_RotatePolygon(aEnlargedPoints, bPoints, GUI_COUNTOF(bPoints), (360-pBuly->pBoatLink->Boat.COG /10) *3.14 /180);
-               draw_boat(&pBuly->pBoatLink->Boat, base_x, base_y, pPoints, PointNum);
+//               draw_boat(&pBuly->pBoatLink->Boat, base_x, base_y, pPoints, PointNum);
                if(!AdsorbedMMSI  &&  (MYABS(base_x-__cursor.x) <= 8)  &&  (MYABS(base_y-__cursor.y) <= 8) ){
                   AdsorbedMMSI  = pBuly->pBoatLink->Boat.user_id;
                }
@@ -941,9 +944,10 @@ static void disp_bully(const long center_lg, const long center_lt, const map_sca
                else{
                   GUI_SetColor(pSkin->ttl_Label );
                }
-               GUI_SetPenSize(MM_BOAT_PENSIZE);
-               GUI_SetLineStyle(GUI_LS_SOLID);
+//               GUI_SetPenSize(MM_BOAT_PENSIZE);
+//               GUI_SetLineStyle(GUI_LS_SOLID);
 //               GUI_DrawPolygon(aEnlargedPoints, GUI_COUNTOF(bPoints), base_x, base_y);
+               
                draw_boat(&pBuly->pBoatLink->Boat, base_x, base_y, pPoints, PointNum);
             }
          }
@@ -1224,7 +1228,7 @@ void getMntWrapPara(long *halfDiff_lg, long* halfDiff_lt, map_scale* pScale)
              {
                 min_lg  = pIterator->mntBoat.lg - drgDist;
              }
-             else if(pIterator->mntBoat.lg + drgDist  >  max_lg)
+             if(pIterator->mntBoat.lg + drgDist  >  max_lg)
              {
                 max_lg  = pIterator->mntBoat.lg + drgDist;
              }
@@ -1233,7 +1237,7 @@ void getMntWrapPara(long *halfDiff_lg, long* halfDiff_lt, map_scale* pScale)
              {
                 min_lt  = pIterator->mntBoat.lt - drgDist;
              }
-             else if(pIterator->mntBoat.lt + drgDist  >  max_lt)
+             if(pIterator->mntBoat.lt + drgDist  >  max_lt)
              {
                 max_lt  = pIterator->mntBoat.lt + drgDist;
              }
@@ -1248,7 +1252,7 @@ void getMntWrapPara(long *halfDiff_lg, long* halfDiff_lt, map_scale* pScale)
             {
                min_lg  = pIterator->pBerth->Boat.longitude - bglDist;
             }
-            else if(pIterator->pBerth->Boat.longitude + bglDist > max_lg)
+            if(pIterator->pBerth->Boat.longitude + bglDist > max_lg)
             {
                max_lg  = pIterator->pBerth->Boat.longitude + bglDist;
             }
@@ -1257,7 +1261,7 @@ void getMntWrapPara(long *halfDiff_lg, long* halfDiff_lt, map_scale* pScale)
             {
                min_lt  = pIterator->pBerth->Boat.latitude - bglDist;
             }
-            else if(pIterator->pBerth->Boat.latitude + bglDist > max_lt)
+            if(pIterator->pBerth->Boat.latitude + bglDist > max_lt)
             {
                max_lt  = pIterator->pBerth->Boat.latitude + bglDist;
             }

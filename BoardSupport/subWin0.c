@@ -325,7 +325,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
        }
        else
        {
-          GUI_DispStringAt("开启", LV_MoniteList_WIDTH+160, 280);
+          GUI_DispStringAt("关闭", LV_MoniteList_WIDTH+160, 280);
        }
        
        if(pIterator->mntBoat.mntSetting.BGL_Setting.isEnable)
@@ -441,7 +441,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
          
 
          
-         if(selectedRow/10 < lastRow/10)
+         if(selectedRow/LV_PAGE_SIZE < lastRow/LV_PAGE_SIZE)
          {
             LISTVIEW_SetSel(thisListView, lastRow);         
             LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%10+10);
@@ -453,10 +453,10 @@ static void myListViewListener(WM_MESSAGE* pMsg)
          selectedRow  = LISTVIEW_GetSel(thisListView);
          lastRow      = LISTVIEW_GetNumRows(thisListView);
          
-         if(selectedRow > 9)
+         if(selectedRow > LV_PAGE_SIZE)
          {
             LISTVIEW_SetSel(thisListView, lastRow);
-            LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%10-10);
+            LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%LV_PAGE_SIZE-LV_PAGE_SIZE);
          }
          WM_InvalidateRect(subWins[0], &lvIndicate);         
          break;
@@ -607,7 +607,7 @@ static void updateListViewContent(WM_HWIN thisHandle)
       pIterator  = pIterator->pNext;
    }
 
-   while(NumOfRows > Cnt+1)
+   while(NumOfRows > Cnt)//modified by Bill
    {
       LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
       NumOfRows  = LISTVIEW_GetNumRows(thisListView);

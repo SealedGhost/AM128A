@@ -132,6 +132,7 @@
 #define MM_BOAT_PENSIZE   2
 
 
+#define LV_PAGE_SIZE  9
 
 
 
@@ -154,7 +155,7 @@
 #define BOAT_NUM_MAX        500
 #define MNT_NUM_MAX         50
 #define INVD_NUM_MAX        10
-#define BULY_NUM_MAX         5
+#define BULY_NUM_MAX         6
 
 /********************************************************************
  *
@@ -171,7 +172,20 @@
  *
  *               printf config.
  */
-//#define __INFO_ENABLE 
+//#define __PRINT_ENABLE 
+//#define __INFO_ENABLE  
+ 
+#ifdef PRINT
+#undef PRINT
+#endif
+
+#ifndef __PRINT_ENABLE
+#define PRINT(format,...)
+#else
+#define PRINT(format,...) printf(""format"\r\n",##__VA_ARGS__)
+#endif
+ 
+
 
 #ifndef __INFO_ENABLE
 
@@ -195,7 +209,7 @@
  *
  *               IC config.
  */
-//#define SND_IC_XT
+#define ISD_XT
 
 
 /********************************************************************

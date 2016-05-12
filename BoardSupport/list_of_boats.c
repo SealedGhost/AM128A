@@ -9,6 +9,7 @@
 #include "invader.h"
 #include "str.h"
 #include "bully.h"
+#include "snap.h"
 // find if id exist in aux_boat, yes return 1, otherwise 0, size exclusive
 
 /*----------------------- Macro defination -----------------------*/
@@ -73,8 +74,10 @@ int insert_18(struct message_18 * p_msg)
 //   if( (p_msg->latitude < mothership.latitude-30000)  ||  (p_msg->latitude > mothership.latitude+30000) )
 //        return 0; 
    /// Update existent berth
-   if(p_msg->longitude == 0  ||  p_msg->longitude  > 10800000  ||  p_msg->latitude == 5400000  ||  p_msg->longitude > 10800000)
+   if(p_msg->longitude == 0  ||  p_msg->longitude  > 10800000  ||  p_msg->latitude == 5400000  ||  p_msg->longitude > 10800000){
+PRINT("ll out");      
       return 0;
+   }    
    
    for(i=0;i<BOAT_NUM_MAX;i++)
    {
@@ -195,16 +198,27 @@ int update_18(BERTH * pBerth, struct message_18 * p_msg)
    Dist = getSphereDist(p_msg->latitude,p_msg->longitude,
                         mothership.latitude,mothership.longitude);  
    pBerth->Boat.dist  = Dist;
-   
+
+PRINT("update 18-%09ld-(%ld,%ld) %d", pBerth->Boat.user_id, pBerth->Boat.longitude,pBerth->Boat.latitude,pBerth->Boat.dist);   
    pBerth->Boat.time_cnt  = TIMESTAMP;
 
 #ifdef P_AM128A
    if(pBerth->Boat.category == 0  &&  p_msg->SOG >= HIGH_SPEED)
    {
       unsigned char nation  = BULY_parseNation(pBerth->Boat.user_id);
-      pBerth->Boat.category  = nation | TYPE_BULLY;
-INFO("find high speed boat :0x%x", pBerth->Boat.category);      
-      BULY_add(pBerth);
+//      pBerth->Boat.category  = nation | TYPE_BULLY;
+//INFO("find high speed boat :0x%x", pBerth->Boat.category);      
+//      BULY_add(pBerth);
+      
+/**
+ *  Modified by SealedGhost at 5/12/2016
+
+ */ 
+
+      if(BULY_add(pBerth)){
+         pBerth->Boat.category  = nation | TYPE_BULLY;
+      }
+INFO("find high speed boat :0x%x", pBerth->Boat.category);               
    }
 #endif
    
@@ -376,14 +390,23 @@ INFO("alloc berth failed!");
                          mothership.latitude, mothership.longitude);
    buf->Boat.dist  = Dist;
    buf->Boat.time_cnt  = TIMESTAMP;
-   
+PRINT("insert 18-%09ld-(%ld,%ld) %d", buf->Boat.user_id, buf->Boat.longitude,buf->Boat.latitude,buf->Boat.dist);     
 #ifdef P_AM128A   
    if(buf->Boat.category == 0  &&  p_msg->SOG >= HIGH_SPEED)
    {
       unsigned char nation  = BULY_parseNation(buf->Boat.user_id);
-      buf->Boat.category  = nation |  TYPE_BULLY;
-INFO("find high speed boat :0x%x", buf->Boat.category);   
-      BULY_add(buf);   
+//      buf->Boat.category  = nation |  TYPE_BULLY;
+//INFO("find high speed boat :0x%x", buf->Boat.category);   
+//      BULY_add(buf);   
+      
+/**
+ *  Modified by SealedGhost at 5/12/2016
+*/  
+
+      if(BULY_add(buf)){
+         buf->Boat.category  = nation | TYPE_BULLY;
+      }
+INFO("find high speed boat :0x%x", buf->Boat.category);  
    }
 #endif   
 
@@ -558,11 +581,21 @@ int update_24B(BERTH * pBerth, type_of_ship * p_msg)
       {
          unsigned char nation;    
          nation  = BULY_parseNation(p_msg->user_id);       
-         if(nation)
-         {
-            pBerth->Boat.category  = nation | TYPE_BULLY;              
-            BULY_add(pBerth);
-INFO("find bully :%09ld--0x%0x",pBerth->Boat.user_id,pBerth->Boat.category);            
+//         if(nation)
+//         {
+//            pBerth->Boat.category  = nation | TYPE_BULLY;              
+//            BULY_add(pBerth);
+//INFO("find bully :%09ld--0x%0x",pBerth->Boat.user_id,pBerth->Boat.category);            
+//         }
+
+
+/**
+ *  Modified by SealedGhost at 5/12/2016
+ */
+         if(nation){
+            if(BULY_add(pBerth)){
+               pBerth->Boat.category  = nation | TYPE_BULLY;
+            }
          }
          else
          {
@@ -610,12 +643,21 @@ INFO("alloc berth failed!");
       {
          unsigned char nation;
          nation  = BULY_parseNation(p_msg->user_id);          
-         if(nation)
-         {
-            buf->Boat.category  = nation | TYPE_BULLY;
-            BULY_add(buf);
-INFO("find bully: %09ld--0x%0x", buf->Boat.user_id, buf->Boat.category);            
-         }
+//         if(nation)
+//         {
+//            buf->Boat.category  = nation | TYPE_BULLY;
+//            BULY_add(buf);
+//INFO("find bully: %09ld--0x%0x", buf->Boat.user_id, buf->Boat.category);            
+//         }
+         
+/**
+ *  Modified by SealedGhost at 5/12/2016
+ */
+         if(nation){
+            if(BULY_add(buf)){
+               buf->Boat.category  = nation | TYPE_BULLY;
+            }
+         }                 
          else
          {
 INFO("find bully without nation");         
@@ -682,6 +724,9 @@ void updateTimeStamp()
          }
          else if(pCur->mntState == MNTState_Monitored)
          {
+            if(SNAP_getSnapObjMMSI() == pCur->Boat.user_id){
+               SNAP_reset();
+            }
             MNT_snapOnMiss(pCur);
          }
          
@@ -752,7 +797,7 @@ int getSphereDist(long lt_1,long lg_1, long lt_2, long lg_2)
  
  if( (lt_1>lt_2?lt_1-lt_2:lt_2-lt_1) <500  &&  (lg_1>lg_2?lg_1-lg_2:lg_2-lg_1) < 500 )
  {
-    dist  = sqrt( (lt_1-lt_2)*(lt_1-lt_1) + (lg_1-lg_2)*(lg_1-lg_2));
+    dist  = sqrt( (lt_1-lt_2)*(lt_1-lt_2) + (lg_1-lg_2)*(lg_1-lg_2));
     return (int)(dist);
  }
  

@@ -16,6 +16,7 @@
 #include "dlg.h"
 #include "sound.h"
 #include "bully.h"
+#include "xt_isd.h"
 
 
 //#ifndef test_test
@@ -52,6 +53,14 @@ static OS_STK Play_Task_Statck[PLAY_TAST_STACK_SIZE];
 //static  OS_STK_DATA Insert_Task_Stack_Use;
 //static  OS_STK_DATA Refresh_Task_Stack_Use;
 
+
+#define MUSIC_ADD(x)  if(x==0) \
+                         musics[musicCursor]  = SND_ID_ZRO; \
+                      else \
+                         musics[musicCursor]  = x; \
+                      musicCursor++
+                      
+#define MUSIC_RESET   musicCursor  = 0
 
 
 /*----------------- external function -------------------*/
@@ -158,16 +167,20 @@ void Insert_Task(void *p_arg)  //等待接收采集到的数据
       OSMutexPend(Refresher, 0, &myErr);        
       switch(tmp)
       {
-         case 18:      
+         case 18:
+PRINT("msg 18");         
               insert_18(&text_out);
               break;
           case 240:
+PRINT("msg 24A");          
               insert_24A(&text_out_24A);
               break;
-          case 241:       
+          case 241:   
+PRINT("msg 24B");          
               insert_24B(&text_out_type_of_ship);       
               break;
           default:
+PRINT("msg null");
            break;
       }
     OSMutexPost(Refresher);    
@@ -202,6 +215,7 @@ void Refresh_Task(void *p_arg)//任务Refresh_Task
     OSTimeDlyHMSM(0,0,5,0);
    }
 }
+
  
  
 void Play_Task(void* p_arg) 
@@ -210,6 +224,8 @@ void Play_Task(void* p_arg)
    int restDlyTime  = 5000;
 
    MNT_BERTH* thisMntBerth  = NULL;
+   
+   
 #ifdef P_AM128A   
    uint8_t playList  = 1;
    BULY_BERTH* thisBulyBerth  = NULL;
@@ -467,6 +483,284 @@ INFO("hsb");
 }
    
  
+void _Play_Task(void* p_arg)
+{
+   uint8_t  musics[30];
+   uint8_t  musicCursor  = 0;
+   
+   uint8_t  Nums[3];
+   
+   MNT_BERTH * thisMntBerth  = NULL;
+   
+#ifdef P_AM128A
+   uint8_t playList  = 1;  
+   BULY_BERTH* thisBulyBerth  = NULL;
+#endif
+ 
+   ISD_Wait_PWRUp(); 
+   
+   ISD_SetVolumn(SysConf.Vol);
+   MUSIC_RESET;
+   
+//   MUSIC_ADD(SND_ID_ZRO);
+//   MUSIC_ADD(1);
+//   MUSIC_ADD(2);
+//   MUSIC_ADD(3);
+//   MUSIC_ADD(4);
+//   MUSIC_ADD(5);
+//   MUSIC_ADD(6);
+//   MUSIC_ADD(7);
+//   MUSIC_ADD(8);  
+//   MUSIC_ADD(9);
+//   MUSIC_ADD(SND_ID_TEN);
+//   MUSIC_ADD(SND_ID_DOT);
+//   MUSIC_ADD(SND_ID_WLCM);
+//   MUSIC_ADD(SND_ID_DEV);
+//   MUSIC_ADD(SND_ID_DSP);
+//   MUSIC_ADD(SND_ID_DRG);
+//   MUSIC_ADD(SND_ID_BGL);
+//   MUSIC_ADD(SND_ID_DST);
+//   MUSIC_ADD(SND_ID_NM);
+//   MUSIC_ADD(SND_ID_TEST);
+//   MUSIC_ADD(SND_ID_HSB);
+//   MUSIC_ADD(SND_ID_SIS);
+//   MUSIC_ADD(SND_ID_CTB);
+//   MUSIC_ADD(SND_ID_JPN);
+//   MUSIC_ADD(SND_ID_KOR);
+//   MUSIC_ADD(SND_ID_PRK);
+//   MUSIC_ADD(SND_ID_INA);
+//   MUSIC_ADD(SND_ID_VIE);
+//   MUSIC_ADD(SND_ID_KT);
+
+// if(musicCursor){
+//            int i  = 0;
+//            
+//            for(i=0; i< musicCursor; i++){
+//               int timeOutCnt  = 0;
+//               ISD_Play(musics[i]);
+//               while(ISD_IsBusy()){
+//                  if(timeOutCnt > 15){
+//                     timeOutCnt  = 0;
+//                     break;
+//                  }
+//                  timeOutCnt ++;
+//                  OSTimeDlyHMSM(0, 0, 0, 200);
+//               }
+//            }   
+//            MUSIC_RESET;
+//}   
+   ISD_Play(SND_ID_WLCM);
+   ISD_PWRDn();   
+   
+   
+   while(1)
+   {
+      if(gIsMute == FALSE){
+#ifdef P_AM128A
+         if(playList  == 1){
+            thisBulyBerth  = BULY_fetchNextPlayBerth();
+            if(thisBulyBerth){
+#ifdef __INFO_ENABLE            
+               BULY_dump();
+#endif               
+               if( (thisBulyBerth->pBoatLink->Boat.category & 0xf0) > 0){
+                  switch(thisBulyBerth->pBoatLink->Boat.category & 0xf0){
+                  case NATION_CTB:
+                       MUSIC_ADD(SND_ID_CTB);
+                       break;
+                  case NATION_JPN:
+                       MUSIC_ADD(SND_ID_JPN);
+                       break;
+                  case NATION_KOR:
+                       MUSIC_ADD(SND_ID_KOR);                  
+                       break;
+                  case NATION_PRK:
+                       MUSIC_ADD(SND_ID_PRK);
+                       break;
+                  case NATION_INA:
+                       MUSIC_ADD(SND_ID_INA);
+                       break;
+                  case NATION_VIE:
+                       MUSIC_ADD(SND_ID_VIE);
+                       break;
+                  }
+                  
+                  if(thisBulyBerth->pBoatLink->Boat.dist < 99999){
+                     SND_ParseDist(thisBulyBerth->pBoatLink->Boat.dist, Nums);
+                     MUSIC_ADD(SND_ID_DST);
+                     
+                     if(Nums[0]){
+                        MUSIC_ADD(Nums[0]);
+                     }
+                     if(Nums[1]){
+                        MUSIC_ADD(Nums[1]);
+                     }
+                     if(Nums[2]){
+                        MUSIC_ADD(Nums[2]);
+                     }
+                     
+                     MUSIC_ADD(SND_ID_NM);
+                     MUSIC_ADD(SND_ID_SIS);
+                     
+                     SND_ParseDist(thisBulyBerth->pBoatLink->Boat.SOG *100, Nums);
+                     if(Nums[0]){
+                        MUSIC_ADD(Nums[0]);
+                     }
+                     if(Nums[1]){
+                        MUSIC_ADD(Nums[1]);
+                     }
+                     if(Nums[2]){
+                        MUSIC_ADD(Nums[2]);
+                     }
+                     MUSIC_ADD(SND_ID_KT);
+                  }
+               }
+               else{
+                  MUSIC_ADD(SND_ID_HSB);
+                  MUSIC_ADD(SND_ID_DST);
+                  
+                  SND_ParseDist(thisBulyBerth->pBoatLink->Boat.dist, Nums);
+                  if(Nums[0]){
+                     MUSIC_ADD(Nums[0]);
+                  }
+                  if(Nums[1]){
+                     MUSIC_ADD(Nums[1]);
+                  }
+                  if(Nums[2]){
+                     MUSIC_ADD(Nums[2]);
+                  }
+                  MUSIC_ADD(SND_ID_NM);
+               }
+            }
+            playList  = 2;
+         }
+         
+         else{
+#endif       
+
+            thisMntBerth  = MNT_fetchNextPlayBerth();
+            if(thisMntBerth){
+               switch( thisMntBerth->trgState & 0xf0){
+               case (0x01 << 7):
+                    if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9'){
+                       MUSIC_ADD(thisMntBerth->nickName[0] - '0');
+                    }
+                    if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9'){
+                       MUSIC_ADD(thisMntBerth->nickName[1] - '0');
+                       MUSIC_ADD(SND_ID_DEV);
+                    }
+                    MUSIC_ADD(SND_ID_DSP);
+                    MUSIC_ADD(SND_ID_DST);
+                    
+                    SND_ParseDist(thisMntBerth->snapDist, Nums);
+                    if(Nums[0]){
+                       MUSIC_ADD(Nums[0]);
+                    }
+                    if(Nums[1]){
+                       MUSIC_ADD(Nums[1]);
+                    }
+                    if(Nums[2]){
+                       MUSIC_ADD(Nums[2]);
+                    }
+                    MUSIC_ADD(SND_ID_NM);
+                    break;
+                    
+               case (0x01 << 6):
+                    if(thisMntBerth->mntBoat.mntSetting.DRG_Setting.isSndEnable){
+                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9'){
+                          MUSIC_ADD(thisMntBerth->nickName[0] - '0');
+                       }
+                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9'){
+                          MUSIC_ADD(thisMntBerth->nickName[1] - '0');
+                          MUSIC_ADD(SND_ID_DEV);
+                       }
+                       MUSIC_ADD(SND_ID_DRG);
+                       
+                       if(thisMntBerth->pBerth->Boat.dist < 99999){
+                          MUSIC_ADD(SND_ID_DST);
+                          
+                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);
+                          if(Nums[0]){
+                             MUSIC_ADD(Nums[0]);
+                          }
+                          if(Nums[1]){
+                             MUSIC_ADD(Nums[1]);
+                          }
+                          if(Nums[2]){
+                             MUSIC_ADD(Nums[2]);
+                          }
+                          MUSIC_ADD(SND_ID_NM);
+                       }
+                    }
+                    break;
+                    
+               case (0x01 << 5):
+                    if(thisMntBerth->mntBoat.mntSetting.BGL_Setting.isSndEnable){
+                       if(thisMntBerth->nickName[0] >= '0'  &&  thisMntBerth->nickName[0] <= '9'){
+                          MUSIC_ADD(thisMntBerth->nickName[0] - '0');
+                       }
+                       if(thisMntBerth->nickName[1] >= '0'  &&  thisMntBerth->nickName[1] <= '9'){
+                          MUSIC_ADD(thisMntBerth->nickName[1] - '0');
+                          MUSIC_ADD(SND_ID_DEV);
+                       }
+                       MUSIC_ADD(SND_ID_BGL);
+                       
+                       if(thisMntBerth->pBerth->Boat.dist < 99999){
+                          MUSIC_ADD(SND_ID_DST);
+                          
+                          SND_ParseDist(thisMntBerth->pBerth->Boat.dist, Nums);
+INFO("blg parse:%d,%d,%d", Nums[0], Nums[1], Nums[2]);                          
+                          if(Nums[0]){
+                             MUSIC_ADD(Nums[0]);
+                          }
+                          if(Nums[1]){
+                             MUSIC_ADD(Nums[1]);
+                          }
+                          if(Nums[2]){
+                             MUSIC_ADD(Nums[2]);
+                          }
+                          MUSIC_ADD(SND_ID_NM);
+                       }
+                    }
+                    break;
+               } /// End. has Mnt boat need to play
+            } /// End. has Mnt boat
+            else{
+                ;
+            }
+            
+#ifdef P_AM128A
+            playList  = 1;
+         } /// End playList != 1
+#endif  
+         if(musicCursor){
+            int i  = 0;
+            
+            ISD_Wait_PWRUp();  
+            
+            for(i=0; i< musicCursor; i++){
+               int timeOutCnt  = 0;
+
+               ISD_Play(musics[i]);
+               while(ISD_IsBusy()){
+                  if(timeOutCnt > 15){
+                     timeOutCnt  = 0;
+                     break;
+                  }
+                  timeOutCnt ++;
+                  OSTimeDlyHMSM(0, 0, 0, 200);
+               }
+            }
+            ISD_PWRDn();            
+            MUSIC_RESET;            
+         } /// End. execute play 
+      } /// End . if(gIsMute == FALSE)
+      
+      OSTimeDlyHMSM(0, 0, 5, 0);
+   } /// 'End'. while(1).In fact this will not happen
+      
+}
+ 
  
 void App_TaskStart(void)//初始化UCOS，初始化SysTick节拍，并创建三个任务
 {
@@ -481,7 +775,13 @@ void App_TaskStart(void)//初始化UCOS，初始化SysTick节拍，并创建三个任务
   
   SPI1_DMA_Init();
   SPI1_Int();
-   
+  
+  SPI2_Int();
+INFO("SPI2 Init Done");  
+  ISD_Init();
+  
+  sysInit();
+  
   OSInit();  
   SysTick_Init();/* 初始化SysTick定时器 */
   Refresher  = OSMutexCreate(6,&myErr);
@@ -518,7 +818,7 @@ void App_TaskStart(void)//初始化UCOS，初始化SysTick节拍，并创建三个任务
                        (void*)0,  
                        OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR);/* 创建任务 Refresh_Task */
                        
-  OSTaskCreateExt(     Play_Task,
+  OSTaskCreateExt(     _Play_Task,
                        (void*)0,
                        (OS_STK*)&Play_Task_Statck[PLAY_TAST_STACK_SIZE-1],
                        Play_Task_PRIO,
@@ -659,6 +959,8 @@ return 0;
 }
 
 /************************************* End *************************************/
+
+
 
 
 

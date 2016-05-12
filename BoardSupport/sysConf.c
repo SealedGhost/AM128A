@@ -25,14 +25,14 @@ const int SYSCONF_SIZE = sizeof(SysConf);
 
 void printSysConf(CONF_SYS * p)
 {
-   printf("\n\r");
-   printf("Skin:           %s-%d\n\r",p->Skin?"Night":"Day",p->Skin);
-   printf("Snd -- Vol      %d\n\r",p->Vol);
-   printf("Brightness      %d\n\r",p->Brt);
-   printf("Unit            %s-%d\n\r",p->Unit?"nm":"km",p->Unit);
-   printf("Shape           %s-%d\n\r",p->Shape?"Fish":"Boat",p->Shape);
+   PRINT(" ");
+   PRINT("Skin:           %s-%d\n",p->Skin?"Night":"Day",p->Skin);
+   PRINT("Snd -- Vol      %d",p->Vol);
+   PRINT("Brightness      %d",p->Brt);
+   PRINT("Unit            %s-%d",p->Unit?"nm":"km",p->Unit);
+   PRINT("Shape           %s-%d",p->Shape?"Fish":"Boat",p->Shape);
 #ifdef P_AM128A   
-   printf("Nations         0x%x\n\r", p->nations);
+   PRINT("Nations         0x%x\n\r", p->nations);
 #endif   
 }
 
@@ -43,32 +43,32 @@ static Bool checkSysConf()
    if(SysConf.Skin != SKIN_Day  &&  SysConf.Skin != SKIN_Night) 
    {
       flag  = FALSE;
-      printf("Skin load error! load %d as skin\n\r",SysConf.Skin);
+      PRINT("Skin load error! load %d as skin",SysConf.Skin);
       SysConf.Skin  = DEFAULT_SKIN;
    }
    if(SysConf.Brt < 1  ||  SysConf.Brt > 6)                     
    {
       flag  = FALSE;   
-      printf("Brt  load error! load %d as brg\n\r",SysConf.Brt);
+      PRINT("Brt  load error! load %d as brg",SysConf.Brt);
       SysConf.Brt  = DEFAULT_BRT;
    }
    if( SysConf.Vol > 6)            
    {
       flag  = FALSE;   
-      printf("Vol  load error! load %d as vol\n\r",SysConf.Vol);
+      PRINT("Vol  load error! load %d as vol",SysConf.Vol);
       SysConf.Vol  = DEFAULT_VOL;
    }
 
    if(SysConf.Unit != UNIT_km  &&  SysConf.Unit != UNIT_nm)     
    {
       flag  = FALSE;   
-      printf("Unit load error! load %d as unit\n\r",SysConf.Unit);
+      PRINT("Unit load error! load %d as unit",SysConf.Unit);
       SysConf.Unit  = DEFAULT_UNIT;
    }
    if(SysConf.Shape != SHAPE_Boat  &&  SysConf.Shape != SHAPE_Fish) 
    {
       flag  = FALSE;   
-      printf("Shape load error! load %d as shape\n\r",SysConf.Shape);
+      PRINT("Shape load error! load %d as shape",SysConf.Shape);
       SysConf.Shape  = DEFAULT_SHAPE;
    }
    return flag;
@@ -84,7 +84,7 @@ Bool sysLoad()
    Bool flag  = TRUE;
    
    
-   printf("\n\rLoading...\n\r"); 
+   PRINT("\n\rLoading..."); 
    
    EEPROM_Read(SYSCONF_ADDR%EEPROM_PAGE_SIZE, SYSCONF_ADDR/EEPROM_PAGE_SIZE,
                &SysConf, MODE_8_BIT, sizeof(CONF_SYS));
@@ -93,7 +93,7 @@ Bool sysLoad()
    if(!checkSysConf())
    {
       sysStore();
-printf("after fix:\n\r");   
+PRINT("after fix:\n\r");   
       printSysConf(&SysConf);
       flag  = FALSE;
    }
@@ -112,7 +112,7 @@ printf("after fix:\n\r");
          MNT_Berthes[i].chsState  = MNTState_Monitored;
          MNT_Berthes[i].trgState  = MNTState_Monitored;
          MNT_Berthes[i].cfgState  = MNTState_Init;
-printf("%d--MMSI:%09ld\n\r",i,MNT_Berthes[i].mntBoat.mmsi);      
+PRINT("%d--MMSI:%09ld\n\r",i,MNT_Berthes[i].mntBoat.mmsi);      
          cnt++;
       }
    }
@@ -163,7 +163,7 @@ INFO("Error happened when system load.System will be configed with default value
    }
 
    PWM_SET(SysConf.Brt); 
-   SND_Init();
+//   SND_Init();
 }
 
 

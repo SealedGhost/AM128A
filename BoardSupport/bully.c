@@ -55,7 +55,20 @@ Bool BULY_add(BERTH* pBoatLink)
    BULY_BERTH * pBuf;
    BULY_BERTH * pIterator;
    
-   pBuf  = BULY_alloc();
+//   pBuf  = BULY_alloc();
+
+/// Modified by SealedGhost at 5/12/2016   
+   int i  = 0;
+   for(i=0; i<BULY_NUM_MAX; i++){
+      if(BULY_Berth[i].pBoatLink == pBoatLink){
+         pBuf  = &BULY_Berth[i];
+         break;
+      }
+   }
+   
+   if(i>=BULY_NUM_MAX)
+      pBuf  = BULY_alloc();
+/// Modified at 5/12/2016 end.
 
    if(pBuf)
    {
@@ -88,13 +101,18 @@ INFO("alloc bully berth failed!");
 
 
 
-
 void BULY_delete(BERTH* addr)
 {
    BULY_BERTH* pBC;
    BULY_BERTH* pCursor;
   
+
+   
+   if(pBulyHeader == NULL)
+      return;
+  
    pBC  = pBulyHeader;  
+  
    if(pBulyHeader->pBoatLink == addr)
    {
       pBulyHeader  = pBulyHeader->pNext;
@@ -236,7 +254,7 @@ void BULY_dump(void)
    BULY_BERTH* pIterator  = pBulyHeader;
    while(pIterator)
    {
-      printf("mmsi:%09ld--sog:%d--dist:%d--category:0x%x\n", pIterator->pBoatLink->Boat.user_id, pIterator->pBoatLink->Boat.SOG, pIterator->pBoatLink->Boat.dist, pIterator->pBoatLink->Boat.category);
+      PRINT("mmsi:%09ld--sog:%d--dist:%d--category:0x%x", pIterator->pBoatLink->Boat.user_id, pIterator->pBoatLink->Boat.SOG, pIterator->pBoatLink->Boat.dist, pIterator->pBoatLink->Boat.category);
       pIterator  = pIterator->pNext;
    }
 }

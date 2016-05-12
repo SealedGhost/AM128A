@@ -13,6 +13,7 @@
 #include "sound.h"
 #include "string.h"
 #include "lpc177x_8x_nvic.h"
+#include "xt_isd.h"
 
 #define ID_WINDOW_0         (GUI_ID_USER + 0x00)
 
@@ -388,9 +389,13 @@ static void _OnVolChanged(WM_MESSAGE * pMsg,int val)
    if(agentConf.Vol != val)
    {
       agentConf.Vol  = val;
-      SND_SetVol(val);
-      GUI_Delay(100);
-      SND_Play(SND_ID_TEST);
+//      SND_SetVol(val);
+//      GUI_Delay(100);
+//      SND_Play(SND_ID_TEST); 
+      ISD_Wait_PWRUp();
+      ISD_SetVolumn(val);
+      ISD_Play(SND_ID_TEST);
+      ISD_PWRDn();
    }
 }
 

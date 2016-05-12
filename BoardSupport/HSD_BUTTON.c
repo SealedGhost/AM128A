@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "str.h"
 #include "stdio.h"
+#include "stddef.h"
 
 typedef struct {
   WIDGET Widget;

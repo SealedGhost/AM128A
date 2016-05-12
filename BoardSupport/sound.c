@@ -132,43 +132,54 @@ void SND_ParseDist(int dist, uint8_t* pNums)
 {
    if(dist < 99999)
    {
-//printf("dist:%d  %d.%d\n\r",dist ,dist/1000, dist%1000/100);
+PRINT("dist:%d  %d.%d\n\r",dist ,dist/1000, dist%1000/100);
       /// Dist >= 20 nm
       if(dist > 19999)
       {
-         if(dist >= 21000) /// Dist >= 21 nm
-         {
-            pNums[0]  = dist/10000;
-            pNums[1]  = SND_ID_TEN;
-            pNums[2]  = dist%10000/1000;
-         }
-         else
-         {
-            pNums[0]  = 0;
-            pNums[1]  = dist/10000;
-            pNums[2]  = SND_ID_TEN;
-         }
+//         if(dist >= 21000) /// Dist >= 21 nm  :  Nx nm (eg. 2)
+//         {
+//            pNums[0]  = dist/10000;
+//            pNums[1]  = SND_ID_TEN;
+//            pNums[2]  = dist%10000/1000;            
+//         }
+//         /// 
+//         else
+//         {
+//            pNums[0]  = 0;
+//            pNums[1]  = dist/10000;
+//            pNums[2]  = SND_ID_TEN;
+//         }
+           pNums[0]  = dist /10000;
+           pNums[1]  = SND_ID_TEN;
+           pNums[2]  = (dist %10000) /1000;
       }
       /// Dist >= 10 nm
       else if(dist > 9999)
       {
-         if(dist >=11000)
-         {
-            pNums[0]  = 0;
-            pNums[1]  = SND_ID_TEN;
-            pNums[2]  = dist%10000/1000;
-         }
-         else
-         {
-            pNums[0]  = 0;
-            pNums[1]  = 0;
-            pNums[2]  = SND_ID_TEN;
-         }
+//         if(dist >=11000)
+//         {
+//            pNums[0]  = 0;
+//            pNums[1]  = SND_ID_TEN;
+//            pNums[2]  = dist%10000/1000;
+//         }
+//         else
+//         {
+//            pNums[0]  = 0;
+//            pNums[1]  = 0;
+//            pNums[2]  = SND_ID_TEN;
+//         }
+         pNums[0]  = SND_ID_TEN;
+         pNums[1]  = (dist %10000) /1000;
+         pNums[2]  = 0;
       }
+      
+      /// 0.1nm <= Dist < 10nm 
       else if(dist > 99)
       {
+         /// Dist >= 1nm   :  1.x nm
          if(dist >999)
            pNums[0]  = dist /1000;
+         /// Dist < 1nm    :  0.x nm
          else
            pNums[0]  = SND_ID_ZRO;
          pNums[1]  = SND_ID_DOT;

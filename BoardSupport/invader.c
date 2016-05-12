@@ -293,14 +293,14 @@ void INVD_printf()
       {
 
             if(pIterator != pInvdMasks[i])
-               printf("-|%09ld|-", pIterator->pBerth->Boat.user_id);
+               PRINT("-|%09ld|-", pIterator->pBerth->Boat.user_id);
             else
-               printf("*|%09ld|*", pIterator->pBerth->Boat.user_id);
+               PRINT("*|%09ld|*", pIterator->pBerth->Boat.user_id);
   
          pIterator  = pIterator->pNext;
       }
       if(pInvdHeaders[i])      
-         printf("\n\r");
+         PRINT(" ");
    }
 }
 
