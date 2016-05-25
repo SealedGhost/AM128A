@@ -170,7 +170,7 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
        LISTVIEW_AddColumn(hItem, LV_MoniteList_Col_0_WIDTH, "距离", GUI_TA_HCENTER | GUI_TA_VCENTER);
        LISTVIEW_AddColumn(hItem, LV_MoniteList_Col_1_WIDTH, "MMSI", GUI_TA_HCENTER | GUI_TA_VCENTER);
        LISTVIEW_AddColumn(hItem, LV_MoniteList_Col_2_WIDTH, "状态", GUI_TA_HCENTER | GUI_TA_VCENTER);
-
+       
  
        LISTVIEW_SetGridVis(hItem, 1);
        LISTVIEW_SetHeaderHeight(hItem,LV_MoniteList_Header_HEIGHT);
@@ -184,6 +184,8 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
        LISTVIEW_SetTextColor(hItem,LISTVIEW_CI_UNSEL, pSkin->itm_txUnsel);
        LISTVIEW_SetTextColor(hItem,LISTVIEW_CI_SEL,   pSkin->itm_txSel);
        LISTVIEW_SetTextColor(hItem,LISTVIEW_CI_SELFOCUS, pSkin->itm_txFocus);
+       
+       LISTVIEW_AddRow(hItem, NULL);
        
        hItem  = LISTVIEW_GetHeader(hItem);
        HEADER_SetBkColor(hItem,pSkin->Header_Bk);
@@ -234,18 +236,26 @@ static void _cbDialog(WM_MESSAGE * pMsg) {
        
        if(WM_HasFocus(hItem) == FALSE)
        {
-          sprintf(pStrBuf,"  0/%3d", TotalRows);
-          GUI_DispStringAt(pStrBuf, LV_MoniteList_WIDTH-80, LV_MoniteList_Y - 25);
+//          sprintf(pStrBuf,"  0/%3d", TotalRows);
+//          GUI_DispStringAt(pStrBuf, LV_MoniteList_WIDTH-80, LV_MoniteList_Y - 25);
           break;
        }
        SelectedRow  = LISTVIEW_GetSel(hItem);
+
        if( !pMntHeader  ||  SelectedRow < 0)
        {
           GUI_DispStringAt("  0/0 ",LV_MoniteList_WIDTH-80, LV_MoniteList_Y - 25);
           break;
        }
           
-       TotalRows  = LISTVIEW_GetNumRows(hItem);     
+       TotalRows  = LISTVIEW_GetNumRows(hItem);   
+       if(TotalRows==1)       {
+          LISTVIEW_GetItemText(hItem, 1, 0,  pStrBuf, 11);
+          if(strtoi(pStrBuf) == 0){
+             GUI_DispStringAt("  0/0 ",LV_MoniteList_WIDTH-80, LV_MoniteList_Y - 25);
+             break;
+          }
+       }
        sprintf(pStrBuf,"%3d/%3d",SelectedRow+1, TotalRows);
        GUI_DispStringAt(pStrBuf, LV_MoniteList_WIDTH-80, LV_MoniteList_Y-25);
        
@@ -441,10 +451,10 @@ static void myListViewListener(WM_MESSAGE* pMsg)
          
 
          
-         if(selectedRow/LV_PAGE_SIZE < lastRow/LV_PAGE_SIZE)
+         if(selectedRow/LV_PAGE_SIZE < (lastRow-1)/LV_PAGE_SIZE)
          {
             LISTVIEW_SetSel(thisListView, lastRow);         
-            LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%10+10);
+            LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%LV_PAGE_SIZE+LV_PAGE_SIZE);
          }
          WM_InvalidateRect(subWins[0], &lvIndicate);
          break;
@@ -453,7 +463,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
          selectedRow  = LISTVIEW_GetSel(thisListView);
          lastRow      = LISTVIEW_GetNumRows(thisListView);
          
-         if(selectedRow > LV_PAGE_SIZE)
+         if(selectedRow-1 > LV_PAGE_SIZE)
          {
             LISTVIEW_SetSel(thisListView, lastRow);
             LISTVIEW_SetSel(thisListView, selectedRow-selectedRow%LV_PAGE_SIZE-LV_PAGE_SIZE);
@@ -508,8 +518,15 @@ static void myListViewListener(WM_MESSAGE* pMsg)
                         SimpBerthes[i].pBerth->mntState  = MNTState_None;
                         break;
                      }
-                  }                
-                  LISTVIEW_DeleteRow(thisListView, SelRow);
+                  }  
+
+                  if(LISTVIEW_GetNumRows(thisListView) > 1)                  
+                     LISTVIEW_DeleteRow(thisListView, SelRow);
+                  else{
+                     LISTVIEW_SetItemText(thisListView, 0, 0, "");
+                     LISTVIEW_SetItemText(thisListView, 1, 0, "");
+                     LISTVIEW_SetItemText(thisListView, 2, 0, "");
+                  }
                   
                   myMsg.hWin  = WM_GetClientWindow(menuWin);               
                   myMsg.MsgId  = USER_MSG_DFULT_CNT;
@@ -609,14 +626,26 @@ static void updateListViewContent(WM_HWIN thisHandle)
 
    while(NumOfRows > Cnt)//modified by Bill
    {
-      LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
-      NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+      if(NumOfRows > 1){
+         LISTVIEW_DeleteRow(thisListView, NumOfRows-1);
+         NumOfRows  = LISTVIEW_GetNumRows(thisListView);
+      }
+      else{
+         LISTVIEW_GetItemText(thisListView, 1, 0, pStrBuf, 11);
+         if(strtoi(pStrBuf) > 0){
+            LISTVIEW_SetItemText(thisListView, 0, 0, "");
+            LISTVIEW_SetItemText(thisListView, 1, 0, "");
+         }
+         else{
+            return;
+         }
+      }
    }
-   
-   if(NumOfRows == 0)
-   {
-      LISTVIEW_AddRow(thisListView, NULL);
-   }
+//   
+//   if(NumOfRows == 0)
+//   {
+//      LISTVIEW_AddRow(thisListView, NULL);
+//   }
    
    WM_InvalidateRect(subWins[0], &lvIndicate);   
 }

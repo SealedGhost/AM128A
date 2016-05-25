@@ -4,6 +4,7 @@ typedef struct message_18 message_18;
 typedef struct message_24 message_24;
 typedef struct message_24_partA message_24_partA;
 typedef struct message_24_partB message_24_partB;
+typedef struct message_common   message_common;
 typedef struct vender_id vender_id;
 typedef struct call_sign call_sign;
 typedef struct dimension_of_ship dimension_of_ship;
@@ -37,6 +38,11 @@ struct message_24_partA{
   long user_id;
   int part_number;
   char name[20];
+};
+
+
+struct message_common{
+   long user_id;
 };
 //struct vender_id{
 //  char manufacturer_id[3];

@@ -53,6 +53,8 @@ void DMA_IRQHandler (void)
           }
 
           OSQPost(QSem,(void *)Partition[myCnt]); 
+          xlCnt++;
+PRINT("dma:%d",xlCnt);          
           myCnt++;
           myCnt  = myCnt%(MSG_QUEUE_TABNUM);
           

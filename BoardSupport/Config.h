@@ -9,6 +9,35 @@
 #define MOTHERSHIP_LG    7128663
 
 
+/********************************************************************
+ *
+ *               printf config.
+ */
+#define __PRINT_ENABLE 
+//#define __INFO_ENABLE  
+ 
+#ifdef PRINT
+#undef PRINT
+#endif
+
+#ifndef __PRINT_ENABLE
+#define PRINT(format,...)
+#else
+#define PRINT(format,...) printf(""format"\r\n",##__VA_ARGS__)
+#endif
+ 
+
+
+#ifndef __INFO_ENABLE
+
+#define INFO(format,...) 
+
+#else
+
+#define INFO(format,...)  printf("FILE:%s,LINE:%d,"format"\r\n",__FILE__,__LINE__,##__VA_ARGS__)
+
+#endif
+
 
 //#define DEBUG_LEVEL  0
 //#define DEBUG_LEVEL DEBUG_LEVEL_ERROR
@@ -168,34 +197,7 @@
 
 
 
-/********************************************************************
- *
- *               printf config.
- */
-//#define __PRINT_ENABLE 
-//#define __INFO_ENABLE  
- 
-#ifdef PRINT
-#undef PRINT
-#endif
 
-#ifndef __PRINT_ENABLE
-#define PRINT(format,...)
-#else
-#define PRINT(format,...) printf(""format"\r\n",##__VA_ARGS__)
-#endif
- 
-
-
-#ifndef __INFO_ENABLE
-
-#define INFO(format,...) 
-
-#else
-
-#define INFO(format,...)  printf("FILE:%s,LINE:%d,"format"\r\n",__FILE__,__LINE__,##__VA_ARGS__)
-
-#endif
 
 
 /********************************************************************

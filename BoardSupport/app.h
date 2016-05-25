@@ -229,7 +229,7 @@ void UI_Task(void *p_arg);
 void Insert_Task(void *p_arg);
 void Refresh_Task(void *p_arg);
 void App_TaskStart(void);
-int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_out_24A,type_of_ship *text_out_type_of_ship);
+int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_out_24A,type_of_ship *text_out_type_of_ship,message_common* text_out_common);
 
 
 

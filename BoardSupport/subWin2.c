@@ -248,8 +248,7 @@ INFO("case skin:%s",pMsg->Data.v==SKIN_Day?"Day":"Night");
        GUI_SetFont(&GUI_Font24_1);
        GUI_SetColor(pSkin->inf_txColor);
        
-       if( N_boat <= 0 )
-          break;  
+
           
 
        
@@ -261,6 +260,12 @@ INFO("case skin:%s",pMsg->Data.v==SKIN_Day?"Day":"Night");
           GUI_DispStringAt(pStrBuf,LV_AllList_WIDTH-80,LV_AllList_Y-20);
           break;
        }
+       
+//       if( N_boat <= 0 ){
+//          sprintf(pStrBuf, "  0/  0");
+//          GUI_DispStringAt(pStrBuf, LV_AllList_WIDTH-80, LV_AllList_Y-20);
+//          break;  
+//       }
        
        SelectedRow  = LISTVIEW_GetSel(hItem); 
             
@@ -378,7 +383,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
 		  switch(pInfo->Key)
 		 	{            
 				   case GUI_KEY_UP:
-            selectedRow  = LISTVIEW_GetSel(thisListView);
+            selectedRow  = LISTVIEW_GetSel(thisListView);          
             if(selectedRow == 0)
             {
                if(LV_Page)
@@ -392,7 +397,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
             {
                LISTVIEW_SetSel(thisListView, selectedRow-1);
             }
-            WM_InvalidateRect(subWins[2],&lvRect);
+            WM_InvalidateRect(subWins[2],&lvRect); 
             WM_InvalidateRect(subWins[2],&lvIndicate);          
             break;
          
@@ -554,7 +559,7 @@ static void myListViewListener(WM_MESSAGE* pMsg)
          if(selectedMMSI <= 0)
             break;
             
-         for(i=N_boat-1;i>=0;i--)
+         for(i=0; i<N_boat; i++)
          {
      
             if(SimpBerthes[i].pBerth->Boat.user_id == selectedMMSI)
@@ -638,12 +643,58 @@ INFO("Something err!");
 }
 
 
+
+static void LV_JumpToRowOf(WM_HWIN thisListView, int row)
+{
+   int visibleRowNum  = 0;  /// 本页可见的列表项条目数
+   int orgIndex  = 0;       /// 本页起始列表项对应的SimpBerth索引
+   int i  = 0;
+
+   if(row+1 < N_boat){
+      row  = N_boat -1;
+   }
+
+
+   visibleRowNum  = (N_boat-1) % LV_PAGE_SIZE +1;
+   
+   orgIndex  = N_boat - visibleRowNum;
+   
+   for(i=0; i<visibleRowNum; i++){
+      disttostr(pStrBuf, SimpBerthes[orgIndex].Dist);
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST, i, pStrBuf);
+      
+      sprintf(pStrBuf, "%09ld", SimpBerthes[orgIndex].pBerth->Boat.user_id);
+      LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, pStrBuf);
+      
+      if(MNTState_None == SimpBerthes[orgIndex].pBerth->mntState){
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, i, "啊");
+      }
+      else{
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT, i, "吖");
+      }
+   }
+   
+   for(; i<LV_PAGE_SIZE; i++){
+      LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, i, pStrBuf, 11);
+      if(strlen(pStrBuf) > 0){
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_DIST, i, "");
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, "");
+         LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT,  i, "");
+      }
+   }
+   
+   LISTVIEW_SetSel(thisListView, visibleRowNum -1);
+}
+
+
+
+
 static void LV_turnPage(WM_HWIN thisListView, int page)
 {
    int viewNumRows  = 0;
    int orgIndex     = 0;
    int i            = 0;
-   
+PRINT("turn to page:%d", page);   
    if( (N_boat-1)/LV_PAGE_SIZE == page)
    {
       viewNumRows  = (N_boat-1) % LV_PAGE_SIZE + 1;
@@ -682,6 +733,28 @@ static void LV_turnPage(WM_HWIN thisListView, int page)
 }
 
 
+static void UpdateListViewContent(WM_HWIN thisListView)
+{
+   int selMMSI  = 0;
+   int selRow   = 0;
+
+   if(N_boat <= 0){
+      LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, 0, pStrBuf, 11);
+      if(strlen(pStrBuf) > 0){
+         LV_JumpToRowOf(thisListView, 0);
+      }
+      else{
+         return ;
+      }
+   }
+   
+   selRow  = LISTVIEW_GetSel(thisListView);
+   LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selRow, pStrBuf, 11);
+   
+}
+
+
+
 static void updateListViewContent(WM_HWIN thisHandle)
 {
    WM_HWIN thisListView  = thisHandle;
@@ -692,8 +765,9 @@ static void updateListViewContent(WM_HWIN thisHandle)
    if(N_boat <= 0)
    {
      // modifided by Bill
-     LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, 0, pStrBuf, 11); 
+     LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, 0, pStrBuf, 11);     
      selectedMMSI  = strtoi(pStrBuf); 
+PRINT("SelMMSI:%d", selectedMMSI);
      if(selectedMMSI)
      {
        for(i=0; i<9; i++)
@@ -702,6 +776,8 @@ static void updateListViewContent(WM_HWIN thisHandle)
          LISTVIEW_SetItemText(thisListView, LV_AllList_Col_MMSI, i, "");
          LISTVIEW_SetItemText(thisListView, LV_AllList_Col_STT,  i, "");
        }
+       LISTVIEW_SetSel(thisListView, 0);
+       WM_InvalidateRect(subWins[2], &lvIndicate);  
        return ;
      }
      return ;
@@ -709,7 +785,8 @@ static void updateListViewContent(WM_HWIN thisHandle)
    
    selRow  = LISTVIEW_GetSel(thisListView);  
    LISTVIEW_GetItemText(thisListView, LV_AllList_Col_MMSI, selRow, pStrBuf, 11); 
-   selectedMMSI  = strtoi(pStrBuf);  
+   selectedMMSI  = strtoi(pStrBuf); 
+PRINT("-SelMMSI:%ld", selectedMMSI);   
    if(selectedMMSI)
    {
       for(i=0; i<N_boat; i++)
@@ -719,6 +796,18 @@ static void updateListViewContent(WM_HWIN thisHandle)
             LV_Page  = i/LV_PAGE_SIZE;
             selRow  = i%LV_PAGE_SIZE;
             break;
+         }
+      }
+      
+      /// Selected boat has gone
+      if(i >= N_boat ){
+PRINT("sel has gone");         
+         if(N_boat > LV_Page * LV_PAGE_SIZE + selRow){
+            selRow  = 0;          
+         }
+         else{
+            LV_Page  = (N_boat-1) /LV_PAGE_SIZE;
+            selRow  = 0;
          }
       }
    }

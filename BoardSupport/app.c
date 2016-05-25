@@ -5,6 +5,7 @@
 #include "lpc177x_8x_gpio.h"
 #include "lpc177x_8x_uart.h"
 #include "lpc177x_8x_timer.h"
+#include "lpc177x_8x_wwdt.h"
 #include "Config.h"
 #include "Setting.h"
 #include "DMA.h"
@@ -29,6 +30,7 @@
 #define Insert_Task_PRIO         8
 #define Refresh_Task_PRIO        9
 #define Play_Task_PRIO           11
+#define Feed_Task_PRIO          10
 
 /* 定义任务堆栈大小 */
 #define USER_TASK_STACK_SIZE 2048
@@ -36,6 +38,8 @@
 #define KEY_TASK_STACK_SIZE 128
 
 #define PLAY_TAST_STACK_SIZE 128
+
+#define FEED_TASK_STACK_SIZE  128
 
 /*------------------- static ----------------------------*/
 /* 定义任务堆栈 */
@@ -48,6 +52,8 @@ static	OS_STK	Refresh_Task_Stack[KEY_TASK_STACK_SIZE];
 
 
 static OS_STK Play_Task_Statck[PLAY_TAST_STACK_SIZE];
+
+static OS_STK Feed_Task_Statck[FEED_TASK_STACK_SIZE];
 
 //static  OS_STK_DATA UI_Task_Stack_Use;
 //static  OS_STK_DATA Insert_Task_Stack_Use;
@@ -116,6 +122,7 @@ _boat_m24B *boat_lisp_p24B[BOAT_NUM_MAX];
 extern int insert_18(struct message_18 * p_msg);
 extern int insert_24A(struct message_24_partA * p_msg);
 extern int insert_24B(type_of_ship * p_msg);
+extern void insert_foil(long mmsi);
 extern void updateTimeStamp(void);
 
 extern void getMntWrapPara(long* pLg, long* pLt, map_scale* pScale);
@@ -140,6 +147,15 @@ int N_boat = 0;
 void SysTick_Init(void);
 
 
+void Feed_Task(void * p_arg)
+{
+   while(1)
+   {
+      WWDT_Feed();
+      OSTimeDlyHMSM(0, 0, 3, 0);
+   }
+}
+
 
 void UI_Task(void *p_arg)/*描述(Description):	任务UI_Task*/
 {
@@ -157,33 +173,49 @@ void Insert_Task(void *p_arg)  //等待接收采集到的数据
   //	static int a=0;
    message_18 text_out;
    message_24_partA text_out_24A;
+   message_common   text_out_common;
    type_of_ship text_out_type_of_ship; 
+   
+   volatile int pendCnt  = 0;
+   
   // USER_Init();
    while(1)
    {	
 
-      s = OSQPend(QSem,0,&err);    
-      tmp  = translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship); 
-      OSMutexPend(Refresher, 0, &myErr);        
+      s = OSQPend(QSem,0,&err);         
+      tmp  = translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship,&text_out_common);    
+PRINT("translate done");      
+      OSMutexPend(Refresher, 0, &myErr);  
+      if(myErr > 0){
+          PRINT("Mutex err:%d",myErr);
+      }
+      pendCnt++;
+PRINT("pend:%d",pendCnt);      
+      
+PRINT("begin insert:%d",tmp);      
       switch(tmp)
       {
-         case 18:
-PRINT("msg 18");         
+         case 18:       
               insert_18(&text_out);
+PRINT("18 done");              
               break;
-          case 240:
-PRINT("msg 24A");          
-              insert_24A(&text_out_24A);
+          case 240:        
+              insert_24A(&text_out_24A);            
               break;
-          case 241:   
-PRINT("msg 24B");          
-              insert_24B(&text_out_type_of_ship);       
+          case 241:          
+              insert_24B(&text_out_type_of_ship);                 
               break;
           default:
-PRINT("msg null");
+             if(tmp > 0  &&  tmp < 26){
+PRINT("insert foil:%d", tmp);              
+                 insert_foil(text_out_common.user_id);  
+                
+             }
            break;
       }
-    OSMutexPost(Refresher);    
+PRINT("out insert");        
+    OSMutexPost(Refresher);   
+  
     OSTimeDly(20); 
 
    }
@@ -200,10 +232,14 @@ void Refresh_Task(void *p_arg)//任务Refresh_Task
    while(1)
    {
     OSMutexPend(Refresher, 0, &myErr);
+PRINT("in refresh");    
 //    OSSchedLock();
-    updateTimeStamp();    
+    updateTimeStamp();   
+PRINT("timestamp");    
     check();
+PRINT("check");    
     getMntWrapPara(&MapPara_lg, &MapPara_lt, &MapPara_scale);
+PRINT("out refresh");    
 //    OSSchedUnlock();
     OSMutexPost(Refresher);
 
@@ -781,11 +817,11 @@ INFO("SPI2 Init Done");
   ISD_Init();
   
   sysInit();
-  
+PRINT("------------------------------");  
   OSInit();  
   SysTick_Init();/* 初始化SysTick定时器 */
   Refresher  = OSMutexCreate(6,&myErr);
-  Updater    = OSMutexCreate(6,&myErr_2);
+//  Updater    = OSMutexCreate(6,&myErr_2);
   QSem = OSQCreate(&MsgQeueTb[0],MSG_QUEUE_TABNUM); //创建消息队列，10条消息
   PartitionPt=OSMemCreate(Partition,MSG_QUEUE_TABNUM,100,&err);
   
@@ -827,12 +863,22 @@ INFO("SPI2 Init Done");
                        PLAY_TAST_STACK_SIZE,
                        (void*)0,
                        OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR );
-
+                       
+  OSTaskCreateExt(     Feed_Task,
+                       (void*)0,
+                       (OS_STK*)&Feed_Task_Statck[FEED_TASK_STACK_SIZE-1],
+                       Feed_Task_PRIO,
+                       Feed_Task_PRIO,
+                       (OS_STK*)&Feed_Task_Statck[0],
+                       FEED_TASK_STACK_SIZE,
+                       (void*)0,
+                       OS_TASK_OPT_STK_CHK+OS_TASK_OPT_STK_CLR
+                       );
   OSStart();
 }
 
 //		switch(translate_(s,&text_out,&text_out_24A,&text_out_type_of_ship))
-int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_out_24A,type_of_ship *text_out_type_of_ship)
+int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_out_24A,type_of_ship *text_out_type_of_ship, message_common* text_out_common)
 {
   int i=0,comma=0;
   int tmp  = 0;
@@ -879,7 +925,9 @@ int translate_(unsigned char *text,message_18 *text_out,message_24_partA *text_o
                 }
                             
            default:
-           
+                if(tmp > 0  &&  tmp < 26){
+                    text_out_common->user_id  = getMMSI(text, i);
+                }
                 return tmp;
            
          }

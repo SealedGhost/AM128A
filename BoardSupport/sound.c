@@ -132,7 +132,6 @@ void SND_ParseDist(int dist, uint8_t* pNums)
 {
    if(dist < 99999)
    {
-PRINT("dist:%d  %d.%d\n\r",dist ,dist/1000, dist%1000/100);
       /// Dist >= 20 nm
       if(dist > 19999)
       {

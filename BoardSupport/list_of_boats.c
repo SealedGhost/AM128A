@@ -55,6 +55,7 @@ int insert_24B(type_of_ship * p_msg);
 int update_24B(BERTH * pBerth, type_of_ship * p_msg);
 int add_24B(type_of_ship * p_msg);
 
+void add_foil(long mmsi);
 
 int getSphereDist(long lg_1,long lt_1, long lg_2, long lt_2);
 void updateTimeStamp(void);
@@ -74,8 +75,7 @@ int insert_18(struct message_18 * p_msg)
 //   if( (p_msg->latitude < mothership.latitude-30000)  ||  (p_msg->latitude > mothership.latitude+30000) )
 //        return 0; 
    /// Update existent berth
-   if(p_msg->longitude == 0  ||  p_msg->longitude  > 10800000  ||  p_msg->latitude == 5400000  ||  p_msg->longitude > 10800000){
-PRINT("ll out");      
+   if(p_msg->longitude == 0  ||  p_msg->longitude  > 10800000  ||  p_msg->latitude == 5400000  ||  p_msg->longitude > 10800000){    
       return 0;
    }    
    
@@ -86,15 +86,18 @@ PRINT("ll out");
          /// We regard little offset as non-move ,just for optimizaton
           if(   NOT_ALMOST(p_msg->longitude,Berthes[i].Boat.longitude)  
              || NOT_ALMOST(p_msg->latitude,Berthes[i].Boat.latitude)    ) 
-          {
-               
+          {              
                if(update_18(&(Berthes[i]), p_msg))
                {
+PRINT("out update");               
                   return 1;               
                }
 
-               else
+               else{
+PRINT("out update");
                   return -1;
+               }
+
           }
           else
           {
@@ -107,8 +110,10 @@ PRINT("ll out");
    /// Add non-existent berth
    if(add_18(p_msg))
    {
+PRINT("out add");   
       return 1;
    }
+PRINT("out update");
    return -1;
 }
 
@@ -175,6 +180,20 @@ int insert_24B(type_of_ship * p_msg)
 }
 
 
+void insert_foil(long mmsi)
+{
+   int i  = 0;
+
+   for(i=0; i<N_boat; i++)   {
+      if(SimpBerthes[i].pBerth->Boat.user_id == mmsi){
+         SimpBerthes[i].pBerth->Boat.time_cnt  = TIMESTAMP;
+PRINT("update foil");         
+         return ;
+      }
+   }
+PRINT("add foil");   
+   add_foil(mmsi);
+}
 
 
 
@@ -186,7 +205,7 @@ int update_18(BERTH * pBerth, struct message_18 * p_msg)
    BERTH * tmp  = NULL;   
    lastDist  = pBerth->Boat.dist;
 
-
+PRINT("in update");
 
    /// Update struct elements  
    pBerth->Boat.SOG    = p_msg->SOG;
@@ -199,7 +218,6 @@ int update_18(BERTH * pBerth, struct message_18 * p_msg)
                         mothership.latitude,mothership.longitude);  
    pBerth->Boat.dist  = Dist;
 
-PRINT("update 18-%09ld-(%ld,%ld) %d", pBerth->Boat.user_id, pBerth->Boat.longitude,pBerth->Boat.latitude,pBerth->Boat.dist);   
    pBerth->Boat.time_cnt  = TIMESTAMP;
 
 #ifdef P_AM128A
@@ -218,7 +236,7 @@ PRINT("update 18-%09ld-(%ld,%ld) %d", pBerth->Boat.user_id, pBerth->Boat.longitu
       if(BULY_add(pBerth)){
          pBerth->Boat.category  = nation | TYPE_BULLY;
       }
-INFO("find high speed boat :0x%x", pBerth->Boat.category);               
+      
    }
 #endif
    
@@ -373,6 +391,7 @@ int add_18(struct message_18 * p_msg)
    
    int Dist  = 0;
 
+PRINT("in add");
    buf  = allocOneBerth();
    if(buf == NULL) 
    {
@@ -390,7 +409,7 @@ INFO("alloc berth failed!");
                          mothership.latitude, mothership.longitude);
    buf->Boat.dist  = Dist;
    buf->Boat.time_cnt  = TIMESTAMP;
-PRINT("insert 18-%09ld-(%ld,%ld) %d", buf->Boat.user_id, buf->Boat.longitude,buf->Boat.latitude,buf->Boat.dist);     
+ 
 #ifdef P_AM128A   
    if(buf->Boat.category == 0  &&  p_msg->SOG >= HIGH_SPEED)
    {
@@ -406,7 +425,7 @@ PRINT("insert 18-%09ld-(%ld,%ld) %d", buf->Boat.user_id, buf->Boat.longitude,buf
       if(BULY_add(buf)){
          buf->Boat.category  = nation | TYPE_BULLY;
       }
-INFO("find high speed boat :0x%x", buf->Boat.category);  
+
    }
 #endif   
 
@@ -599,7 +618,6 @@ int update_24B(BERTH * pBerth, type_of_ship * p_msg)
          }
          else
          {
-INFO("find bully without nation");
          }         
          return 1;
       }
@@ -660,7 +678,7 @@ INFO("alloc berth failed!");
          }                 
          else
          {
-INFO("find bully without nation");         
+         
          }
       }
    }
@@ -685,6 +703,39 @@ INFO("find bully without nation");
    return 1;
 }
 
+
+
+void add_foil(long mmsi)
+{
+   BERTH* buf  = allocOneBerth();
+   
+   if(buf == NULL){
+INFO("alloc berth failed!");   
+      return ;
+   }
+   
+   buf->Boat.user_id  = mmsi;
+   buf->Boat.time_cnt  = TIMESTAMP;
+   
+   if(pHeader == NULL)
+   {
+      pHeader  = buf;
+      pTail    = buf;
+      return ;
+   }
+  
+  /***     Add at tail  
+   *                                   |
+   *                                   V
+   *  NODE    NODE    NODE    NODE   @here
+   *                           tail
+   */                       
+   pTail->pNext  = buf;
+   buf->pPrev    = pTail;
+   
+   buf->pNext  = NULL;
+   pTail  = buf;   
+}
 
 
 void updateTimeStamp()
@@ -734,7 +785,7 @@ void updateTimeStamp()
          else if( (pCur->Boat.category&0x0f) == TYPE_BULLY)
          {
             BULY_delete(pCur);
-INFO("delete bully");            
+         
          }
 #endif         
          /// Delete at header

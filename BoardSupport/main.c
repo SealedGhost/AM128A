@@ -12,6 +12,7 @@
 // #include "exfuns.h"
 #include "lpc177x_8x_eeprom.h"
 #include "lpc177x_8x_uart.h"
+#include "lpc177x_8x_wwdt.h"
 #include "sdram.h"
 
 ////////
@@ -61,8 +62,17 @@ int main(void)
 ////  //fs_test();
 ////  	exfuns_init();
 ////  	load_font(); //¼ÓÔØflash×Ö¿â  7E 02 01 EF
+//  LPC1788_WWDT_Init(4000000);
 
-	App_TaskStart();
+
+
+  WWDT_Init(4000000);
+  WWDT_Enable(ENABLE);
+  WWDT_SetMode(WWDT_RESET_MODE, ENABLE);
+  WWDT_Start(4000000);
+  
+    
+ 	App_TaskStart();
 
 	while(1);
 }

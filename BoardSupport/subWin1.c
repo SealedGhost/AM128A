@@ -257,6 +257,12 @@ static void myListViewListener(WM_MESSAGE* pMsg)
             {
                selectedRow  = LISTVIEW_GetSel(thisListView);
                pIterator  = pMntHeader;
+               
+               LISTVIEW_GetItemText(thisListView, 1, selectedRow, pStrBuf, 11);
+               if(strtoi(pStrBuf) == 0){
+                  return;
+               }
+               
                for(index=0;  index < selectedRow; index++)
                {
                   pIterator  = pIterator->pNext;
@@ -290,7 +296,14 @@ static void myListViewListener(WM_MESSAGE* pMsg)
             break;
           
        case GUI_KEY_ENTER:
+            
             selectedRow  = LISTVIEW_GetSel(thisListView);
+            
+            LISTVIEW_GetItemText(thisListView, 1, selectedRow, pStrBuf, 11);
+            if(strtoi(pStrBuf) == 0){
+               return ;
+            }
+            
             pIterator  = pMntHeader;
             
             for(index=0;index<selectedRow;index++)
